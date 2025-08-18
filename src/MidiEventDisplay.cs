@@ -9,31 +9,60 @@ public class MidiEventDisplay(ConsoleLogger logger)
     private readonly ConcurrentQueue<DisplayEvent> _displayQueue = new();
     private readonly ArrayPool<char> _charPool = ArrayPool<char>.Shared;
     private readonly StringBuilder _stringBuilder = new(256);
+    private readonly Random _random = new();
+    
+    // Animation state
+    private int _animationFrame = 0;
+    private DateTime _lastFrameTime = DateTime.UtcNow;
     
     // Pre-computed lookup tables for better performance
-    private static readonly Dictionary<byte, string> _eventIcons = new()
+    private static readonly Dictionary<byte, string[]> _eventIconAnimations = new()
     {
-        { 0x80, "🔴" }, { 0x90, "🟢" }, { 0xA0, "🟡" }, { 0xB0, "🔵" },
-        { 0xC0, "🟣" }, { 0xD0, "🟠" }, { 0xE0, "⚪" }, { 0xF0, "⚙️" }
+        { 0x80, new[] { "🔴", "🟤", "⚫", "🔴" } }, // Note Off - fade effect
+        { 0x90, new[] { "🟢", "💚", "✨", "🌟", "🟢" } }, // Note On - sparkle effect
+        { 0xA0, new[] { "🟡", "🟨", "⭐", "🟡" } }, // Polyphonic pressure
+        { 0xB0, new[] { "🔵", "🔷", "💎", "🔵" } }, // Control change
+        { 0xC0, new[] { "🟣", "🟪", "💜", "🟣" } }, // Program change
+        { 0xD0, new[] { "🟠", "🟧", "🔶", "🟠" } }, // Channel pressure
+        { 0xE0, new[] { "⚪", "⭕", "🌙", "⚪" } }, // Pitch bend
+        { 0xF0, new[] { "⚙️", "🔧", "🛠️", "⚙️" } } // System/Meta
     };
     
-    private static readonly Dictionary<byte, ConsoleColor> _eventColors = new()
+    private static readonly Dictionary<byte, ConsoleColor[]> _eventColorAnimations = new()
     {
-        { 0x80, ConsoleColor.Red }, { 0x90, ConsoleColor.Green }, { 0xA0, ConsoleColor.Yellow },
-        { 0xB0, ConsoleColor.Cyan }, { 0xC0, ConsoleColor.Magenta }, { 0xD0, ConsoleColor.Blue },
-        { 0xE0, ConsoleColor.White }, { 0xF0, ConsoleColor.Gray }
+        { 0x80, new[] { ConsoleColor.Red, ConsoleColor.DarkRed, ConsoleColor.Black, ConsoleColor.Red } },
+        { 0x90, new[] { ConsoleColor.Green, ConsoleColor.Cyan, ConsoleColor.White, ConsoleColor.Yellow, ConsoleColor.Green } },
+        { 0xA0, new[] { ConsoleColor.Yellow, ConsoleColor.DarkYellow, ConsoleColor.White, ConsoleColor.Yellow } },
+        { 0xB0, new[] { ConsoleColor.Cyan, ConsoleColor.Blue, ConsoleColor.White, ConsoleColor.Cyan } },
+        { 0xC0, new[] { ConsoleColor.Magenta, ConsoleColor.DarkMagenta, ConsoleColor.White, ConsoleColor.Magenta } },
+        { 0xD0, new[] { ConsoleColor.Blue, ConsoleColor.DarkBlue, ConsoleColor.Cyan, ConsoleColor.Blue } },
+        { 0xE0, new[] { ConsoleColor.White, ConsoleColor.Gray, ConsoleColor.DarkGray, ConsoleColor.White } },
+        { 0xF0, new[] { ConsoleColor.Gray, ConsoleColor.DarkGray, ConsoleColor.White, ConsoleColor.Gray } }
+    };
+
+    // Visual intensity based on velocity/value
+    private static readonly string[] _intensityBars = new[]
+    {
+        "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"
+    };
+
+    private static readonly string[] _sparkleEffects = new[]
+    {
+        "✨", "⭐", "🌟", "💫", "⚡", "🔥", "💥", "🎆"
     };
 
     public async Task DisplayMidiDataAsync(string filePath, CancellationToken cancellationToken)
     {
         try
         {
+            // Enhanced header with animation
+            await DisplayAnimatedHeaderAsync();
             logger.PrintMidiAnalysisHeader();
 
             // Parse file with streaming approach
             var (midiEvents, ticksPerQuarter) = await ParseMidiFileStreamingAsync(filePath, cancellationToken);
             
-            // Start display worker task
+            // Start display worker task with enhanced animation
             var displayTask = ProcessDisplayQueueAsync(cancellationToken);
             
             double currentTempo = 500000.0;
@@ -51,6 +80,7 @@ public class MidiEventDisplay(ConsoleLogger logger)
                 if (midiEvent.EventType == 0xFF && midiEvent.Data.Length >= 5 && midiEvent.Data[1] == 0x51)
                 {
                     currentTempo = (midiEvent.Data[2] << 16) | (midiEvent.Data[3] << 8) | midiEvent.Data[4];
+                    await DisplayTempoChangeEffectAsync(currentTempo);
                 }
 
                 var ticksSinceStart = midiEvent.Ticks - totalTicks;
@@ -77,6 +107,7 @@ public class MidiEventDisplay(ConsoleLogger logger)
             }
 
             await displayTask;
+            await DisplayEndAnimationAsync();
         }
         catch (OperationCanceledException)
         {
@@ -85,10 +116,80 @@ public class MidiEventDisplay(ConsoleLogger logger)
         catch (Exception ex)
         {
             logger.PrintSystemStatus("MIDI Parser", "EXCEPTION", ConsoleColor.Red);
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"🚨 PARSER ERROR: {ex.Message}");
-            Console.ResetColor();
+            await DisplayErrorEffectAsync(ex.Message);
         }
+    }
+
+    private async Task DisplayAnimatedHeaderAsync()
+    {
+        var headerFrames = new[]
+        {
+            "🎵 MIDI Event Display Starting... 🎵",
+            "🎶 MIDI Event Display Starting... 🎶",
+            "🎼 MIDI Event Display Starting... 🎼",
+            "🎹 MIDI Event Display Starting... 🎹"
+        };
+
+        for (int i = 0; i < headerFrames.Length; i++)
+        {
+            Console.Clear();
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"\n{new string('=', 50)}");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"{headerFrames[i]:^50}");
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"{new string('=', 50)}\n");
+            Console.ResetColor();
+            await Task.Delay(300);
+        }
+    }
+
+    private async Task DisplayTempoChangeEffectAsync(double tempo)
+    {
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        var bpm = 60000000.0 / tempo;
+        Console.Write($"🎵 TEMPO CHANGE: {bpm:F0} BPM ");
+        
+        // Animated tempo visualization
+        for (int i = 0; i < 5; i++)
+        {
+            Console.Write("♪");
+            await Task.Delay(100);
+        }
+        Console.WriteLine(" 🎵");
+        Console.ResetColor();
+    }
+
+    private async Task DisplayErrorEffectAsync(string message)
+    {
+        // Flashing error effect
+        for (int i = 0; i < 3; i++)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"🚨 PARSER ERROR: {message}");
+            await Task.Delay(200);
+            Console.Clear();
+            await Task.Delay(200);
+        }
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"🚨 PARSER ERROR: {message}");
+        Console.ResetColor();
+    }
+
+    private async Task DisplayEndAnimationAsync()
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\n🎉 MIDI playback complete! 🎉");
+        
+        // Celebration effect
+        var celebrations = new[] { "🎊", "🎉", "✨", "🌟" };
+        for (int i = 0; i < 10; i++)
+        {
+            Console.Write(celebrations[_random.Next(celebrations.Length)]);
+            await Task.Delay(100);
+        }
+        Console.WriteLine();
+        Console.ResetColor();
     }
 
     private async Task ProcessEventBatch(List<MidiEvent> events, TimeSpan eventTime, double delayMs, CancellationToken cancellationToken)
@@ -112,6 +213,14 @@ public class MidiEventDisplay(ConsoleLogger logger)
 
         while (!cancellationToken.IsCancellationRequested)
         {
+            // Update animation frame
+            var now = DateTime.UtcNow;
+            if ((now - _lastFrameTime).TotalMilliseconds >= 250) // 4 FPS for animations
+            {
+                _animationFrame++;
+                _lastFrameTime = now;
+            }
+
             // Batch dequeue for better performance
             while (_displayQueue.TryDequeue(out var displayEvent) && displayEvents.Count < maxBatchSize)
             {
@@ -158,24 +267,108 @@ public class MidiEventDisplay(ConsoleLogger logger)
             var description = GetMidiEventDescriptionOptimized(midiEvent);
             var eventType = (byte)(midiEvent.EventType & 0xF0);
             
-            var eventIcon = _eventIcons.GetValueOrDefault(eventType, "⚫");
-            var eventColor = _eventColors.GetValueOrDefault(eventType, ConsoleColor.DarkGray);
+            // Get animated icon and color
+            var iconAnimations = _eventIconAnimations.GetValueOrDefault(eventType, new[] { "⚫" });
+            var colorAnimations = _eventColorAnimations.GetValueOrDefault(eventType, new[] { ConsoleColor.DarkGray });
+            
+            var currentIcon = iconAnimations[_animationFrame % iconAnimations.Length];
+            var currentColor = colorAnimations[_animationFrame % colorAnimations.Length];
 
-            // Single console write operation for better performance
+            // Add intensity visualization for note events
+            var intensityBar = GetIntensityVisualization(midiEvent);
+            var sparkleEffect = GetSparkleEffect(midiEvent);
+
+            // Enhanced console output with animations and effects
             Console.ForegroundColor = ConsoleColor.DarkGray;
             Console.Write($"[{timestamp:mm\\:ss\\.fff}] ");
-            Console.ForegroundColor = eventColor;
-            Console.Write($"{eventIcon} {midiEvent.EventType:X2}: ");
+            
+            Console.ForegroundColor = currentColor;
+            Console.Write($"{currentIcon} {midiEvent.EventType:X2}: ");
+            
+            // Add intensity bar for note events
+            if (!string.IsNullOrEmpty(intensityBar))
+            {
+                Console.ForegroundColor = GetIntensityColor(midiEvent);
+                Console.Write($"{intensityBar} ");
+            }
+            
             Console.ResetColor();
             Console.Write($"{hexString,-10} ");
+            
             Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine(description);
+            Console.Write(description);
+            
+            // Add sparkle effect for high-velocity notes
+            if (!string.IsNullOrEmpty(sparkleEffect))
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write($" {sparkleEffect}");
+            }
+            
+            Console.WriteLine();
             Console.ResetColor();
         }
         finally
         {
             _charPool.Return(hexData);
         }
+    }
+
+    private string GetIntensityVisualization(MidiEvent midiEvent)
+    {
+        var eventType = (byte)(midiEvent.EventType & 0xF0);
+        
+        if ((eventType == 0x80 || eventType == 0x90) && midiEvent.Data.Length >= 3)
+        {
+            var velocity = midiEvent.Data[2];
+            var intensityIndex = Math.Min(velocity * _intensityBars.Length / 128, _intensityBars.Length - 1);
+            return _intensityBars[intensityIndex];
+        }
+        
+        if (eventType == 0xB0 && midiEvent.Data.Length >= 3) // Control Change
+        {
+            var value = midiEvent.Data[2];
+            var intensityIndex = Math.Min(value * _intensityBars.Length / 128, _intensityBars.Length - 1);
+            return _intensityBars[intensityIndex];
+        }
+        
+        return string.Empty;
+    }
+
+    private ConsoleColor GetIntensityColor(MidiEvent midiEvent)
+    {
+        var eventType = (byte)(midiEvent.EventType & 0xF0);
+        
+        if ((eventType == 0x80 || eventType == 0x90) && midiEvent.Data.Length >= 3)
+        {
+            var velocity = midiEvent.Data[2];
+            return velocity switch
+            {
+                >= 100 => ConsoleColor.Red,
+                >= 80 => ConsoleColor.Yellow,
+                >= 60 => ConsoleColor.Green,
+                >= 40 => ConsoleColor.Cyan,
+                _ => ConsoleColor.Blue
+            };
+        }
+        
+        return ConsoleColor.Gray;
+    }
+
+    private string GetSparkleEffect(MidiEvent midiEvent)
+    {
+        var eventType = (byte)(midiEvent.EventType & 0xF0);
+        
+        if (eventType == 0x90 && midiEvent.Data.Length >= 3) // Note On
+        {
+            var velocity = midiEvent.Data[2];
+            if (velocity >= 100) // High velocity notes get sparkle effect
+            {
+                return _sparkleEffects[_random.Next(_sparkleEffects.Length)];
+            }
+        }
+        
+        return string.Empty;
     }
 
     private static string GetMidiEventDescriptionOptimized(MidiEvent midiEvent)
