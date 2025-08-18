@@ -18,13 +18,7 @@ public class MidiPlayer : IDisposable
     private static extern int mciGetErrorString(int errorCode, StringBuilder errorText, int errorTextLen);
 
     [DllImport("winmm.dll")]
-    private static extern int midiOutOpen(ref IntPtr handle, int deviceId, IntPtr callback, IntPtr instance, int flags);
-
-    [DllImport("winmm.dll")]
     private static extern int midiOutClose(IntPtr handle);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutShortMsg(IntPtr handle, int message);
 
     [DllImport("winmm.dll")]
     private static extern int midiOutGetNumDevs();
@@ -86,13 +80,13 @@ public class MidiPlayer : IDisposable
 
             // Start MIDI data visualization in parallel with audio playback
             _playbackCancellation = new CancellationTokenSource();
-            
+
             var audioTask = Task.Run(() => TrySimplePlayback(filePath));
             var visualTask = Task.Run(() => DisplayMidiDataAsync(filePath, _playbackCancellation.Token));
 
             // Wait for audio task to complete first, then stop visualization
             var audioResult = await audioTask;
-            
+
             if (!audioResult)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -101,7 +95,7 @@ public class MidiPlayer : IDisposable
                 Console.WriteLine("[ALTERNATIVE] Try the note testing feature instead.");
                 Console.ResetColor();
             }
-            
+
             // Wait for visualization to complete
             await visualTask;
         }
@@ -148,11 +142,11 @@ public class MidiPlayer : IDisposable
                 // Calculate accurate timing
                 var ticksSinceStart = midiEvent.Ticks - totalTicks;
                 totalTicks = midiEvent.Ticks;
-                
+
                 // Convert ticks to milliseconds using current tempo
                 var eventDelayMs = (ticksSinceStart * currentTempo) / (ticksPerQuarter * 1000.0);
                 var eventTime = TimeSpan.FromMilliseconds(totalTicks * currentTempo / (ticksPerQuarter * 1000.0));
-                
+
                 if (eventDelayMs > 0)
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(eventDelayMs), cancellationToken);
@@ -191,7 +185,7 @@ public class MidiPlayer : IDisposable
     {
         var hexData = string.Join(" ", midiEvent.Data.Select(b => $"{b:X2}"));
         var description = GetMidiEventDescription(midiEvent);
-        
+
         Console.ForegroundColor = GetEventColor(midiEvent.EventType);
         Console.WriteLine($"[{timestamp:mm\\:ss\\.fff}] {midiEvent.EventType:X2}: {hexData,-20} ({description})");
         Console.ResetColor();
@@ -216,7 +210,7 @@ public class MidiPlayer : IDisposable
     private static string GetMidiEventDescription(MidiEvent midiEvent)
     {
         if (midiEvent.Data.Length < 2) return "Invalid Event";
-        
+
         return (midiEvent.EventType & 0xF0) switch
         {
             0x80 => $"Note Off - Ch{(midiEvent.EventType & 0x0F) + 1}, Note {midiEvent.Data[1]}, Vel {midiEvent.Data[2]}",
@@ -234,7 +228,7 @@ public class MidiPlayer : IDisposable
     private static string GetMetaEventDescription(byte[] data)
     {
         if (data.Length < 2) return "Invalid Meta Event";
-        
+
         return data[1] switch
         {
             0x00 => "Sequence Number",
@@ -259,7 +253,7 @@ public class MidiPlayer : IDisposable
     private static async Task<(List<MidiEvent> events, int ticksPerQuarter)> ParseMidiFileAsync(string filePath)
     {
         var events = new List<MidiEvent>();
-        
+
         using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         using var reader = new BinaryReader(fileStream);
 
@@ -285,7 +279,7 @@ public class MidiPlayer : IDisposable
 
         // Sort events by absolute ticks for proper timing
         events = events.OrderBy(e => e.Ticks).ToList();
-        
+
         return (events, division);
     }
 
@@ -297,7 +291,7 @@ public class MidiPlayer : IDisposable
 
         var trackLength = ReadBigEndianInt32(reader);
         var trackEnd = reader.BaseStream.Position + trackLength;
-        
+
         int currentTicks = 0;
         byte runningStatus = 0;
 
@@ -307,7 +301,7 @@ public class MidiPlayer : IDisposable
             currentTicks += deltaTime;
 
             var eventByte = reader.ReadByte();
-            
+
             // Handle running status
             if ((eventByte & 0x80) == 0)
             {
@@ -319,7 +313,7 @@ public class MidiPlayer : IDisposable
                 runningStatus = eventByte;
             }
 
-            var midiEvent = await ParseEventAsync(reader, eventByte, currentTicks);
+            var midiEvent = ParseEvent(reader, eventByte, currentTicks);
             if (midiEvent != null)
             {
                 events.Add(midiEvent);
@@ -327,7 +321,7 @@ public class MidiPlayer : IDisposable
         }
     }
 
-    private static async Task<MidiEvent?> ParseEventAsync(BinaryReader reader, byte eventType, int ticks)
+    private static MidiEvent? ParseEvent(BinaryReader reader, byte eventType, int ticks)
     {
         var eventData = new List<byte> { eventType };
 
@@ -335,7 +329,7 @@ public class MidiPlayer : IDisposable
         {
             // Standard MIDI channel message
             eventData.Add(reader.ReadByte()); // Data byte 1
-            
+
             if ((eventType & 0xF0) != 0xC0 && (eventType & 0xF0) != 0xD0)
             {
                 eventData.Add(reader.ReadByte()); // Data byte 2 (if applicable)
@@ -346,7 +340,7 @@ public class MidiPlayer : IDisposable
             // Meta event
             var metaType = reader.ReadByte();
             var length = ReadVariableLength(reader);
-            
+
             eventData.Add(metaType);
             for (int i = 0; i < length; i++)
             {
@@ -367,7 +361,7 @@ public class MidiPlayer : IDisposable
         {
             Ticks = ticks,
             EventType = eventType,
-            Data = eventData.ToArray()
+            Data = [.. eventData]
         };
     }
 
@@ -375,7 +369,7 @@ public class MidiPlayer : IDisposable
     {
         int value = 0;
         byte currentByte;
-        
+
         do
         {
             currentByte = reader.ReadByte();
@@ -574,6 +568,6 @@ public class MidiPlayer : IDisposable
     {
         public int Ticks { get; set; }
         public byte EventType { get; set; }
-        public byte[] Data { get; set; } = Array.Empty<byte>();
+        public byte[] Data { get; set; } = [];
     }
 }
