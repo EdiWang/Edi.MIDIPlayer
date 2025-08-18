@@ -6,7 +6,6 @@ namespace Edi.MIDIPlayer;
 
 public class MidiEventDisplay(ConsoleLogger logger)
 {
-    private readonly ConcurrentQueue<DisplayEvent> _displayQueue = new();
     private readonly ArrayPool<char> _charPool = ArrayPool<char>.Shared;
     private readonly StringBuilder _stringBuilder = new(256);
     private readonly Random _random = new();
@@ -59,54 +58,45 @@ public class MidiEventDisplay(ConsoleLogger logger)
             await DisplayAnimatedHeaderAsync();
             logger.PrintMidiAnalysisHeader();
 
-            // Parse file with streaming approach
+            // Parse file and display events with timing
             var (midiEvents, ticksPerQuarter) = await ParseMidiFileStreamingAsync(filePath, cancellationToken);
             
-            // Start display worker task with enhanced animation
-            var displayTask = ProcessDisplayQueueAsync(cancellationToken);
-            
-            double currentTempo = 500000.0;
-            double totalTicks = 0;
-            var lastDisplayTime = DateTime.UtcNow;
-            const int batchSize = 10; // Process events in batches
-            var eventBatch = new List<MidiEvent>(batchSize);
+            double currentTempo = 500000.0; // Default MIDI tempo (120 BPM)
+            long previousTicks = 0;
+            var startTime = DateTime.UtcNow;
 
             foreach (var midiEvent in midiEvents)
             {
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                // Update tempo if tempo change event
+                // Handle tempo changes
                 if (midiEvent.EventType == 0xFF && midiEvent.Data.Length >= 5 && midiEvent.Data[1] == 0x51)
                 {
                     currentTempo = (midiEvent.Data[2] << 16) | (midiEvent.Data[3] << 8) | midiEvent.Data[4];
                     await DisplayTempoChangeEffectAsync(currentTempo);
                 }
 
-                var ticksSinceStart = midiEvent.Ticks - totalTicks;
-                totalTicks = midiEvent.Ticks;
+                // Calculate timing based on delta ticks
+                long deltaTicks = midiEvent.Ticks - previousTicks;
+                previousTicks = midiEvent.Ticks;
 
-                var eventDelayMs = (ticksSinceStart * currentTempo) / (ticksPerQuarter * 1000.0);
-                var eventTime = TimeSpan.FromMilliseconds(totalTicks * currentTempo / (ticksPerQuarter * 1000.0));
+                // Convert ticks to milliseconds
+                double delayMs = (deltaTicks * currentTempo) / (ticksPerQuarter * 1000.0);
 
-                eventBatch.Add(midiEvent);
-
-                // Process events in batches to reduce overhead
-                if (eventBatch.Count >= batchSize || eventDelayMs > 50)
+                // Wait for the appropriate time
+                if (delayMs > 0)
                 {
-                    await ProcessEventBatch(eventBatch, eventTime, eventDelayMs, cancellationToken);
-                    eventBatch.Clear();
+                    await Task.Delay(TimeSpan.FromMilliseconds(delayMs), cancellationToken);
                 }
+
+                // Calculate current playback time
+                var currentTime = DateTime.UtcNow - startTime;
+                
+                // Display the event
+                DisplayMidiEventOptimized(midiEvent, currentTime);
             }
 
-            // Process remaining events
-            if (eventBatch.Count > 0)
-            {
-                var eventTime = TimeSpan.FromMilliseconds(totalTicks * currentTempo / (ticksPerQuarter * 1000.0));
-                await ProcessEventBatch(eventBatch, eventTime, 0, cancellationToken);
-            }
-
-            await displayTask;
             await DisplayEndAnimationAsync();
         }
         catch (OperationCanceledException)
@@ -192,61 +182,16 @@ public class MidiEventDisplay(ConsoleLogger logger)
         Console.ResetColor();
     }
 
-    private async Task ProcessEventBatch(List<MidiEvent> events, TimeSpan eventTime, double delayMs, CancellationToken cancellationToken)
-    {
-        if (delayMs > 0)
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(delayMs), cancellationToken);
-        }
-
-        foreach (var midiEvent in events)
-        {
-            var displayEvent = new DisplayEvent(midiEvent, eventTime);
-            _displayQueue.Enqueue(displayEvent);
-        }
-    }
-
-    private async Task ProcessDisplayQueueAsync(CancellationToken cancellationToken)
-    {
-        const int maxBatchSize = 20;
-        var displayEvents = new List<DisplayEvent>(maxBatchSize);
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            // Update animation frame
-            var now = DateTime.UtcNow;
-            if ((now - _lastFrameTime).TotalMilliseconds >= 250) // 4 FPS for animations
-            {
-                _animationFrame++;
-                _lastFrameTime = now;
-            }
-
-            // Batch dequeue for better performance
-            while (_displayQueue.TryDequeue(out var displayEvent) && displayEvents.Count < maxBatchSize)
-            {
-                displayEvents.Add(displayEvent);
-            }
-
-            if (displayEvents.Count > 0)
-            {
-                DisplayEventBatch(displayEvents);
-                displayEvents.Clear();
-            }
-
-            await Task.Delay(16, cancellationToken); // ~60 FPS update rate
-        }
-    }
-
-    private void DisplayEventBatch(List<DisplayEvent> events)
-    {
-        foreach (var displayEvent in events)
-        {
-            DisplayMidiEventOptimized(displayEvent.Event, displayEvent.Timestamp);
-        }
-    }
-
     private void DisplayMidiEventOptimized(MidiEvent midiEvent, TimeSpan timestamp)
     {
+        // Update animation frame
+        var now = DateTime.UtcNow;
+        if ((now - _lastFrameTime).TotalMilliseconds >= 250) // 4 FPS for animations
+        {
+            _animationFrame++;
+            _lastFrameTime = now;
+        }
+
         // Pre-allocate and reuse StringBuilder
         _stringBuilder.Clear();
         
@@ -424,6 +369,4 @@ public class MidiEventDisplay(ConsoleLogger logger)
             return MidiFileParser.ParseMidiFile(filePath);
         }, cancellationToken);
     }
-
-    private readonly record struct DisplayEvent(MidiEvent Event, TimeSpan Timestamp);
 }

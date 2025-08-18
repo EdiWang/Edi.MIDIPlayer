@@ -11,6 +11,10 @@ public class MciPlaybackEngine : IDisposable
     private CancellationTokenSource? _cancellationTokenSource;
     private bool _disposed = false;
 
+    // Event to notify position updates
+    public event Action<TimeSpan>? PositionChanged;
+    public event Action? PlaybackCompleted;
+
     // Windows API declarations
     [DllImport("winmm.dll")]
     private static extern int mciSendString(string command, StringBuilder? returnValue, int returnLength, IntPtr winHandle);
@@ -117,7 +121,7 @@ public class MciPlaybackEngine : IDisposable
             Console.WriteLine("Audio pipeline established - Real-time streaming initiated");
             Console.ResetColor();
 
-            // Step 4: Monitor playback asynchronously
+            // Step 4: Monitor playback asynchronously with position tracking
             await MonitorPlaybackAsync(cancellationToken);
 
             // Step 5: Clean up

@@ -44,11 +44,14 @@ public class MidiPlayer : IDisposable
             // Start MIDI data visualization in parallel with audio playback
             _playbackCancellation = new CancellationTokenSource();
 
-            var audioTask = Task.Run(() => _playbackEngine.PlayFileAsync(filePath));
+            var audioTask = Task.Run(() => _playbackEngine.PlayFileAsync(filePath, _playbackCancellation.Token));
             var visualTask = Task.Run(() => _eventDisplay.DisplayMidiDataAsync(filePath, _playbackCancellation.Token));
 
-            // Wait for audio task to complete first, then stop visualization
+            // Wait for audio task to complete first, then cancel visualization
             var audioResult = await audioTask;
+
+            // Cancel visualization when audio completes
+            _playbackCancellation.Cancel();
 
             if (!audioResult)
             {
@@ -56,8 +59,15 @@ public class MidiPlayer : IDisposable
                 Console.ResetColor();
             }
 
-            // Wait for visualization to complete
-            await visualTask;
+            // Wait for visualization to handle cancellation gracefully
+            try
+            {
+                await visualTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when we cancel the visualization
+            }
         }
         catch (Exception ex)
         {
