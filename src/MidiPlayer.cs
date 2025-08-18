@@ -165,8 +165,8 @@ public class MidiPlayer : IDisposable
         try
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n┌─ MIDI STREAM ANALYZER ─────────────────────────────────────┐");
-            Console.WriteLine("│  Real-time MIDI event processing and hex dump visualization │ ");
+            Console.WriteLine("\n┌─ MIDI STREAM ANALYZER ──────────────────────────────────────┐");
+            Console.WriteLine("│ Real-time MIDI event processing and hex dump visualization  │ ");
             Console.WriteLine("│ Format: [Timestamp] Command: HEX_DATA (Event Description)   │ ");
             Console.WriteLine("└─────────────────────────────────────────────────────────────┘");
             Console.ResetColor();
