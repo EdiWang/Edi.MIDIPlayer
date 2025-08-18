@@ -62,7 +62,7 @@ internal class Program
         else
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Audio playback unavailable - visual mode only");
+            Console.WriteLine("Audio playback unavailable");
             Console.ResetColor();
         }
 
