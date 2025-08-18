@@ -12,7 +12,7 @@ internal class Program
         { 6, "F#" }, { 7, "G" }, { 8, "G#" }, { 9, "A" }, { 10, "A#" }, { 11, "B" }
     };
 
-    private static readonly char[] ActivityChars = { '█', '▓', '▒', '░', '·' };
+    private static readonly char[] ActivityChars = ['█', '▓', '▒', '░', '·'];
     private static int _activityIndex = 0;
     private static readonly Lock _consoleLock = new();
 
@@ -96,7 +96,7 @@ internal class Program
                     allEvents.Add(new MidiEventInfo { AbsoluteTime = midiEvent.AbsoluteTime, Event = midiEvent });
                 }
             }
-            allEvents = allEvents.OrderBy(e => e.AbsoluteTime).ToList();
+            allEvents = [.. allEvents.OrderBy(e => e.AbsoluteTime)];
 
             WriteMessage("PROC", $"Processed {allEvents.Count} MIDI events", ConsoleColor.Green);
 
