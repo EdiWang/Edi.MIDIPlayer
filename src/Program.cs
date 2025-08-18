@@ -29,7 +29,7 @@ internal class Program
 
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
-                WriteHackerMessage("ERROR", "MIDI file not found or invalid path", ConsoleColor.Red);
+                WriteMessage("ERROR", "MIDI file not found or invalid path", ConsoleColor.Red);
                 return;
             }
 
@@ -37,11 +37,11 @@ internal class Program
         }
         catch (Exception ex)
         {
-            WriteHackerMessage("FATAL", $"Unexpected error: {ex.Message}", ConsoleColor.Red);
+            WriteMessage("FATAL", $"Unexpected error: {ex.Message}", ConsoleColor.Red);
         }
         finally
         {
-            WriteHackerMessage("SYSTEM", "Press any key to exit...", ConsoleColor.Yellow);
+            WriteMessage("SYSTEM", "Press any key to exit...", ConsoleColor.Yellow);
             Console.ReadKey();
         }
     }
@@ -51,8 +51,8 @@ internal class Program
         Console.ForegroundColor = ConsoleColor.Green;
         Console.ResetColor();
 
-        WriteHackerMessage("INIT", "EDI.MIDIPLAYER Terminal", ConsoleColor.Cyan);
-        WriteHackerMessage("INIT", "Initializing audio subsystems...", ConsoleColor.Gray);
+        WriteMessage("INIT", "EDI.MIDIPLAYER Terminal", ConsoleColor.Cyan);
+        WriteMessage("INIT", "Initializing audio subsystems...", ConsoleColor.Gray);
         Thread.Sleep(500);
         Console.WriteLine();
     }
@@ -65,7 +65,7 @@ internal class Program
             return args[0];
         }
 
-        WriteHackerMessage("INPUT", "Enter MIDI file path for injection:", ConsoleColor.Yellow);
+        WriteMessage("INPUT", "Enter MIDI file path for injection:", ConsoleColor.Yellow);
         Console.Write("     > ");
         Console.ForegroundColor = ConsoleColor.White;
 
@@ -79,11 +79,11 @@ internal class Program
     {
         try
         {
-            // WriteHackerMessage("LOAD", $"Reading MIDI data from: {Path.GetFileName(filePath)}", ConsoleColor.Cyan);
+            // WriteMessage("LOAD", $"Reading MIDI data from: {Path.GetFileName(filePath)}", ConsoleColor.Cyan);
 
             var midiFile = new MidiFile(filePath, false);
 
-            WriteHackerMessage("SCAN", $"Detected {midiFile.Tracks} tracks, {midiFile.DeltaTicksPerQuarterNote} ticks/quarter", ConsoleColor.Gray);
+            WriteMessage("SCAN", $"Detected {midiFile.Tracks} tracks, {midiFile.DeltaTicksPerQuarterNote} ticks/quarter", ConsoleColor.Gray);
 
             using var midiOut = new MidiOut(0);
 
@@ -98,7 +98,7 @@ internal class Program
             }
             allEvents = allEvents.OrderBy(e => e.AbsoluteTime).ToList();
 
-            WriteHackerMessage("PROC", $"Processed {allEvents.Count} MIDI events", ConsoleColor.Green);
+            WriteMessage("PROC", $"Processed {allEvents.Count} MIDI events", ConsoleColor.Green);
 
             // Get initial tempo (default to 500ms/quarter note if missing)
             int ticksPerQuarterNote = midiFile.DeltaTicksPerQuarterNote;
@@ -111,7 +111,7 @@ internal class Program
                 {
                     tempo = ((TempoEvent)meta).MicrosecondsPerQuarterNote;
                     var bpm = 60000000.0 / tempo;
-                    WriteHackerMessage("TEMPO", $"BPM: {bpm:F1} ({tempo:F0} μs/quarter)", ConsoleColor.Magenta);
+                    WriteMessage("TEMPO", $"BPM: {bpm:F1} ({tempo:F0} μs/quarter)", ConsoleColor.Magenta);
                     break;
                 }
             }
@@ -120,7 +120,7 @@ internal class Program
         }
         catch (Exception ex)
         {
-            WriteHackerMessage("ERROR", $"Playback failed: {ex.Message}", ConsoleColor.Red);
+            WriteMessage("ERROR", $"Playback failed: {ex.Message}", ConsoleColor.Red);
         }
     }
 
@@ -130,11 +130,11 @@ internal class Program
         long lastTime = 0;
         var activeNotes = new HashSet<int>();
 
-        WriteHackerMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
+        WriteMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
         Thread.Sleep(1000);
 
         Console.WriteLine();
-        WriteHackerMessage("LIVE", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
+        WriteMessage("LIVE", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
 
         foreach (var midiEntry in allEvents)
         {
@@ -152,8 +152,8 @@ internal class Program
             ProcessMidiEvent(midiEntry, midiOut, stopwatch, activeNotes);
         }
 
-        WriteHackerMessage("COMP", "MIDI injection completed successfully", ConsoleColor.Green);
-        WriteHackerMessage("STATS", $"Active notes at end: {activeNotes.Count}", ConsoleColor.Gray);
+        WriteMessage("COMP", "MIDI injection completed successfully", ConsoleColor.Green);
+        WriteMessage("STATS", $"Active notes at end: {activeNotes.Count}", ConsoleColor.Gray);
     }
 
     private static void ProcessMidiEvent(MidiEventInfo midiEntry, MidiOut midiOut, Stopwatch stopwatch, HashSet<int> activeNotes)
@@ -267,7 +267,7 @@ internal class Program
         return bar.ToString();
     }
 
-    private static void WriteHackerMessage(string type, string message, ConsoleColor color)
+    private static void WriteMessage(string type, string message, ConsoleColor color)
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
 
