@@ -46,8 +46,6 @@ internal class Program
         // Audio playback task (if available)
         if (midiPlayerReady)
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("Starting audio playback...");
             Console.ResetColor();
 
             try

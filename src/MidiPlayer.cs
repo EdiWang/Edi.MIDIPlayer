@@ -43,39 +43,21 @@ public class MidiPlayer : IDisposable
         Console.WriteLine("]");
     }
 
-    private static void PrintProgressBar(string label, int percentage, ConsoleColor color = ConsoleColor.Green)
-    {
-        const int barWidth = 40;
-        int filled = (percentage * barWidth) / 100;
-        
-        Console.Write($"[{label}] [");
-        Console.ForegroundColor = color;
-        Console.Write(new string('█', filled));
-        Console.ForegroundColor = ConsoleColor.DarkGray;
-        Console.Write(new string('░', barWidth - filled));
-        Console.ResetColor();
-        Console.WriteLine($"] {percentage}%");
-    }
-
     public static bool Initialize()
     {
         try
         {
             // Simulate system initialization with progress bars
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("┌─────────────────── SYSTEM INITIALIZATION ───────────────────┐");
+            Console.WriteLine("─────────────────── SYSTEM INITIALIZATION ────────────────────");
             Console.ResetColor();
-            
-            PrintProgressBar("Loading MIDI drivers", 25, ConsoleColor.Cyan);
+            Console.WriteLine("Loading MIDI drivers");
             Thread.Sleep(100);
-            PrintProgressBar("Scanning audio devices", 50, ConsoleColor.Yellow);
+            Console.WriteLine("Scanning audio devices");
             Thread.Sleep(100);
-            PrintProgressBar("Initializing synthesizers", 75, ConsoleColor.Green);
-            Thread.Sleep(100);
-            PrintProgressBar("System ready", 100, ConsoleColor.Green);
-            
+            Console.WriteLine("Initializing synthesizers");
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("└──────────────────────────────────────────────────────────────┘");
+            Console.WriteLine("──────────────────────────────────────────────────────────────");
             Console.ResetColor();
             Console.WriteLine();
 
@@ -97,7 +79,6 @@ public class MidiPlayer : IDisposable
 
             PrintSystemStatus("MIDI System Status", "ONLINE", ConsoleColor.Green);
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("✅ All systems operational - Ready for audio stream processing");
             Console.ResetColor();
             Console.WriteLine();
             return true;
@@ -127,13 +108,24 @@ public class MidiPlayer : IDisposable
 
             Console.ForegroundColor = ConsoleColor.Magenta;
             Console.WriteLine("┌─ INITIATING PLAYBACK SEQUENCE ──────────────────────────────┐");
-            Console.WriteLine("│ 🎵 Loading MIDI stream into memory buffer...                │");
-            Console.WriteLine("│ 🔄 Preparing dual-thread audio/visual processing...         │");
-            Console.WriteLine("└──────────────────────────────────────────────────────────────┘");
+            Console.WriteLine("│ Loading MIDI stream into memory buffer...                   │");
+            Console.WriteLine("│ Preparing dual-thread audio/visual processing...            │");
+            Console.WriteLine("└─────────────────────────────────────────────────────────────┘");
             Console.ResetColor();
 
             // Clean up any previous playback first
             await CleanupAllMciDevices();
+
+            // Display countdown for 3 seconds
+            for (int i = 3; i > 0; i--)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write($"\rStarting playback in {i} seconds... ");
+                Console.ResetColor();
+                await Task.Delay(1000);
+            }
+
+            Console.WriteLine();
 
             // Start MIDI data visualization in parallel with audio playback
             _playbackCancellation = new CancellationTokenSource();
@@ -147,12 +139,6 @@ public class MidiPlayer : IDisposable
             if (!audioResult)
             {
                 PrintSystemStatus("Audio Engine", "PLAYBACK FAILED", ConsoleColor.Red);
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("┌─ TROUBLESHOOTING GUIDE ─────────────────────────────────────┐");
-                Console.WriteLine("│ 🔍 MIDI synthesizer may not be properly configured          │");
-                Console.WriteLine("│ 🎹 Try the note testing feature for hardware verification   │");
-                Console.WriteLine("│ 🔧 Check system audio drivers and MIDI mapper settings      │");
-                Console.WriteLine("└──────────────────────────────────────────────────────────────┘");
                 Console.ResetColor();
             }
 
@@ -163,7 +149,7 @@ public class MidiPlayer : IDisposable
         {
             PrintSystemStatus("Playback Engine", "EXCEPTION", ConsoleColor.Red);
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"🚨 STACK TRACE: {ex.Message}");
+            Console.WriteLine($"STACK TRACE: {ex.Message}");
             Console.ResetColor();
         }
         finally
@@ -179,10 +165,10 @@ public class MidiPlayer : IDisposable
         try
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n╔═══════════════════ MIDI STREAM ANALYZER ═══════════════════╗");
-            Console.WriteLine("║ Real-time MIDI event processing and hex dump visualization  ║");
-            Console.WriteLine("║ Format: [Timestamp] Command: HEX_DATA (Event Description)   ║");
-            Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
+            Console.WriteLine("\n┌─ MIDI STREAM ANALYZER ─────────────────────────────────────┐");
+            Console.WriteLine("│  Real-time MIDI event processing and hex dump visualization │ ");
+            Console.WriteLine("│ Format: [Timestamp] Command: HEX_DATA (Event Description)   │ ");
+            Console.WriteLine("└─────────────────────────────────────────────────────────────┘");
             Console.ResetColor();
 
             var (midiEvents, ticksPerQuarter) = await ParseMidiFileAsync(filePath);
@@ -225,14 +211,14 @@ public class MidiPlayer : IDisposable
 
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
-            Console.WriteLine("🎯 MIDI stream analysis complete - All events processed");
+            Console.WriteLine("MIDI stream analysis complete - All events processed");
             Console.ResetColor();
         }
         catch (OperationCanceledException)
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
-            Console.WriteLine("⏹️  MIDI stream analysis terminated by audio completion");
+            Console.WriteLine("MIDI stream analysis terminated by audio completion");
             Console.ResetColor();
         }
         catch (Exception ex)
@@ -261,7 +247,7 @@ public class MidiPlayer : IDisposable
         Console.ForegroundColor = ConsoleColor.White;
         Console.Write($"({description})");
         Console.ResetColor();
-        
+
         Console.WriteLine();
     }
 
@@ -358,7 +344,7 @@ public class MidiPlayer : IDisposable
         var division = ReadBigEndianInt16(reader);
 
         Console.ForegroundColor = ConsoleColor.DarkCyan;
-        Console.WriteLine($"📊 MIDI Header Analysis: Format {format} | Tracks {trackCount} | Division {division} PPQ");
+        Console.WriteLine($"MIDI Header Analysis: Format {format} | Tracks {trackCount} | Division {division} PPQ");
         Console.ResetColor();
 
         // Read tracks
@@ -502,7 +488,7 @@ public class MidiPlayer : IDisposable
                 GetMciErrorString(result, errorBuffer);
                 PrintSystemStatus("MCI Interface", "OPEN FAILED", ConsoleColor.Red);
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"🚨 MCI Error: {errorBuffer}");
+                Console.WriteLine($"MCI Error: {errorBuffer}");
                 Console.ResetColor();
                 return false;
             }
@@ -539,7 +525,7 @@ public class MidiPlayer : IDisposable
 
             PrintSystemStatus("Audio Engine", "STREAMING ACTIVE", ConsoleColor.Green);
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("🎵 Audio pipeline established - Real-time streaming initiated");
+            Console.WriteLine("Audio pipeline established - Real-time streaming initiated");
             Console.ResetColor();
 
             // Step 4: Monitor playback
@@ -553,7 +539,7 @@ public class MidiPlayer : IDisposable
         {
             PrintSystemStatus("Audio Engine", "EXCEPTION", ConsoleColor.Red);
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"🚨 CRITICAL ERROR: {ex.Message}");
+            Console.WriteLine($"CRITICAL ERROR: {ex.Message}");
             Console.ResetColor();
             StopCurrentPlayback();
             return false;
@@ -576,7 +562,7 @@ public class MidiPlayer : IDisposable
                 {
                     PrintSystemStatus("Audio Engine", "STREAM ENDED", ConsoleColor.Yellow);
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("✅ Audio processing completed successfully");
+                    Console.WriteLine("Audio processing completed successfully");
                     Console.ResetColor();
                     _playbackCancellation?.Cancel();
                     break;
