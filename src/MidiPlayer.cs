@@ -210,15 +210,7 @@ public class MidiPlayer : IDisposable
             }
 
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
             Console.WriteLine("MIDI stream analysis complete - All events processed");
-            Console.ResetColor();
-        }
-        catch (OperationCanceledException)
-        {
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
-            Console.WriteLine("MIDI stream analysis terminated by audio completion");
             Console.ResetColor();
         }
         catch (Exception ex)
@@ -243,9 +235,9 @@ public class MidiPlayer : IDisposable
         Console.ForegroundColor = GetEventColor(midiEvent.EventType);
         Console.Write($"{eventIcon} {midiEvent.EventType:X2}:");
         Console.ResetColor();
-        Console.Write($" {hexData,-20} ");
+        Console.Write($" {hexData,-10} ");
         Console.ForegroundColor = ConsoleColor.White;
-        Console.Write($"({description})");
+        Console.Write($"{description}");
         Console.ResetColor();
 
         Console.WriteLine();
@@ -289,12 +281,12 @@ public class MidiPlayer : IDisposable
 
         return (midiEvent.EventType & 0xF0) switch
         {
-            0x80 => $"Note Off - Ch{(midiEvent.EventType & 0x0F) + 1}, Note {midiEvent.Data[1]}, Vel {midiEvent.Data[2]}",
-            0x90 => $"Note On  - Ch{(midiEvent.EventType & 0x0F) + 1}, Note {midiEvent.Data[1]}, Vel {midiEvent.Data[2]}",
-            0xA0 => $"Aftertouch - Ch{(midiEvent.EventType & 0x0F) + 1}, Note {midiEvent.Data[1]}, Pressure {midiEvent.Data[2]}",
-            0xB0 => $"Control Change - Ch{(midiEvent.EventType & 0x0F) + 1}, CC {midiEvent.Data[1]}, Val {midiEvent.Data[2]}",
-            0xC0 => $"Program Change - Ch{(midiEvent.EventType & 0x0F) + 1}, Program {midiEvent.Data[1]}",
-            0xD0 => $"Channel Pressure - Ch{(midiEvent.EventType & 0x0F) + 1}, Pressure {midiEvent.Data[1]}",
+            0x80 => $"Note Off - CH {(midiEvent.EventType & 0x0F) + 1}, NOTE {midiEvent.Data[1]}, VEL {midiEvent.Data[2]}",
+            0x90 => $"CH {(midiEvent.EventType & 0x0F) + 1} | NOTE {midiEvent.Data[1]} | VEL {midiEvent.Data[2]}",
+            0xA0 => $"Aftertouch - CH {(midiEvent.EventType & 0x0F) + 1}, NOTE {midiEvent.Data[1]}, Pressure {midiEvent.Data[2]}",
+            0xB0 => $"Control Change - CH {(midiEvent.EventType & 0x0F) + 1}, CC {midiEvent.Data[1]}, Val {midiEvent.Data[2]}",
+            0xC0 => $"Program Change - CH {(midiEvent.EventType & 0x0F) + 1}, Program {midiEvent.Data[1]}",
+            0xD0 => $"Channel Pressure - CH {(midiEvent.EventType & 0x0F) + 1}, Pressure {midiEvent.Data[1]}",
             0xE0 => $"Pitch Bend - Ch{(midiEvent.EventType & 0x0F) + 1}, Value {((midiEvent.Data.Length > 2 ? midiEvent.Data[2] : 0) << 7) | midiEvent.Data[1]}",
             0xF0 when midiEvent.EventType == 0xFF => GetMetaEventDescription(midiEvent.Data),
             _ => "Unknown Event"
