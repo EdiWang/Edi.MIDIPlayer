@@ -1,54 +1,140 @@
 ﻿using NAudio.Midi;
+using System.Diagnostics;
+using System.Text;
 
 namespace Edi.MIDIPlayer;
 
 internal class Program
 {
-    static void Main(string[] args)
+    private static readonly Dictionary<int, string> NoteNames = new()
     {
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
+        { 0, "C" }, { 1, "C#" }, { 2, "D" }, { 3, "D#" }, { 4, "E" }, { 5, "F" },
+        { 6, "F#" }, { 7, "G" }, { 8, "G#" }, { 9, "A" }, { 10, "A#" }, { 11, "B" }
+    };
 
-        string filePath = args.Length > 0 ? args[0] : GetMidiFilePath();
+    private static readonly char[] ActivityChars = { '█', '▓', '▒', '░', '·' };
+    private static int _activityIndex = 0;
+    private static readonly Lock _consoleLock = new();
 
-        if (string.IsNullOrEmpty(filePath))
+    static async Task Main(string[] args)
+    {
+        try
         {
-            Console.WriteLine("No MIDI file specified. Exiting...");
-            return;
-        }
+            Console.OutputEncoding = Encoding.UTF8;
+            Console.Clear();
 
-        var midiFile = new MidiFile(filePath, false);
+            DisplayHackerBanner();
 
-        using var midiOut = new MidiOut(0);
+            string filePath = GetMidiFilePath(args);
 
-        // Gather all events from all tracks, in absolute (chronological) order
-        var allEvents = new List<MidiEventInfo>();
-        for (int track = 0; track < midiFile.Tracks; track++)
-        {
-            foreach (MidiEvent midiEvent in midiFile.Events[track])
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
-                allEvents.Add(new MidiEventInfo { AbsoluteTime = midiEvent.AbsoluteTime, Event = midiEvent });
+                WriteHackerMessage("ERROR", "MIDI file not found or invalid path", ConsoleColor.Red);
+                return;
             }
+
+            await PlayMidiFileAsync(filePath);
         }
-        allEvents = allEvents.OrderBy(e => e.AbsoluteTime).ToList();
-
-        // Get initial tempo (default to 500ms/quarter note if missing)
-        int ticksPerQuarterNote = midiFile.DeltaTicksPerQuarterNote;
-        double tempo = 500000; // microseconds per quarter note (default 120 BPM)
-
-        // Find tempo if specified
-        foreach (var ev in allEvents)
+        catch (Exception ex)
         {
-            if (ev.Event is MetaEvent meta && meta.MetaEventType == MetaEventType.SetTempo)
-            {
-                tempo = ((TempoEvent)meta).MicrosecondsPerQuarterNote;
-                break;
-            }
+            WriteHackerMessage("FATAL", $"Unexpected error: {ex.Message}", ConsoleColor.Red);
+        }
+        finally
+        {
+            WriteHackerMessage("SYSTEM", "Press any key to exit...", ConsoleColor.Yellow);
+            Console.ReadKey();
+        }
+    }
+
+    private static void DisplayHackerBanner()
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.ResetColor();
+
+        WriteHackerMessage("INIT", "EDI.MIDIPLAYER Terminal", ConsoleColor.Cyan);
+        WriteHackerMessage("INIT", "Initializing audio subsystems...", ConsoleColor.Gray);
+        Thread.Sleep(500);
+        Console.WriteLine();
+    }
+
+    private static string GetMidiFilePath(string[] args)
+    {
+        if (args.Length > 0)
+        {
+            // WriteHackerMessage("INPUT", $"Using command line path: {args[0]}", ConsoleColor.Cyan);
+            return args[0];
         }
 
+        WriteHackerMessage("INPUT", "Enter MIDI file path for injection:", ConsoleColor.Yellow);
+        Console.Write("     > ");
+        Console.ForegroundColor = ConsoleColor.White;
+
+        var path = Console.ReadLine()?.Trim('"') ?? string.Empty;
+        Console.ResetColor();
+
+        return path;
+    }
+
+    private static async Task PlayMidiFileAsync(string filePath)
+    {
+        try
+        {
+            // WriteHackerMessage("LOAD", $"Reading MIDI data from: {Path.GetFileName(filePath)}", ConsoleColor.Cyan);
+
+            var midiFile = new MidiFile(filePath, false);
+
+            WriteHackerMessage("SCAN", $"Detected {midiFile.Tracks} tracks, {midiFile.DeltaTicksPerQuarterNote} ticks/quarter", ConsoleColor.Gray);
+
+            using var midiOut = new MidiOut(0);
+
+            // Simple event collection without parallel processing
+            var allEvents = new List<MidiEventInfo>();
+            for (int track = 0; track < midiFile.Tracks; track++)
+            {
+                foreach (MidiEvent midiEvent in midiFile.Events[track])
+                {
+                    allEvents.Add(new MidiEventInfo { AbsoluteTime = midiEvent.AbsoluteTime, Event = midiEvent });
+                }
+            }
+            allEvents = allEvents.OrderBy(e => e.AbsoluteTime).ToList();
+
+            WriteHackerMessage("PROC", $"Processed {allEvents.Count} MIDI events", ConsoleColor.Green);
+
+            // Get initial tempo (default to 500ms/quarter note if missing)
+            int ticksPerQuarterNote = midiFile.DeltaTicksPerQuarterNote;
+            double tempo = 500000; // microseconds per quarter note (default 120 BPM)
+
+            // Find tempo if specified
+            foreach (var ev in allEvents)
+            {
+                if (ev.Event is MetaEvent meta && meta.MetaEventType == MetaEventType.SetTempo)
+                {
+                    tempo = ((TempoEvent)meta).MicrosecondsPerQuarterNote;
+                    var bpm = 60000000.0 / tempo;
+                    WriteHackerMessage("TEMPO", $"BPM: {bpm:F1} ({tempo:F0} μs/quarter)", ConsoleColor.Magenta);
+                    break;
+                }
+            }
+
+            await PlayEventsAsync(allEvents, midiOut, tempo, ticksPerQuarterNote);
+        }
+        catch (Exception ex)
+        {
+            WriteHackerMessage("ERROR", $"Playback failed: {ex.Message}", ConsoleColor.Red);
+        }
+    }
+
+    private static async Task PlayEventsAsync(List<MidiEventInfo> allEvents, MidiOut midiOut, double tempo, int ticksPerQuarterNote)
+    {
+        var stopwatch = Stopwatch.StartNew();
         long lastTime = 0;
-        var startTime = DateTime.Now;
+        var activeNotes = new HashSet<int>();
 
-        Console.WriteLine("MIDI Visualizer Start!\n");
+        WriteHackerMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
+        Thread.Sleep(1000);
+
+        Console.WriteLine();
+        WriteHackerMessage("LIVE", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
 
         foreach (var midiEntry in allEvents)
         {
@@ -59,45 +145,152 @@ internal class Program
 
             if (delayMs > 0)
             {
-                Thread.Sleep(delayMs);
+                await Task.Delay(delayMs);
             }
             lastTime = midiEntry.AbsoluteTime;
 
-            if (midiEntry.Event.CommandCode == MidiCommandCode.NoteOn)
+            ProcessMidiEvent(midiEntry, midiOut, stopwatch, activeNotes);
+        }
+
+        WriteHackerMessage("COMP", "MIDI injection completed successfully", ConsoleColor.Green);
+        WriteHackerMessage("STATS", $"Active notes at end: {activeNotes.Count}", ConsoleColor.Gray);
+    }
+
+    private static void ProcessMidiEvent(MidiEventInfo midiEntry, MidiOut midiOut, Stopwatch stopwatch, HashSet<int> activeNotes)
+    {
+        var elapsed = stopwatch.Elapsed;
+        var timestamp = $"{elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+
+        if (midiEntry.Event.CommandCode == MidiCommandCode.NoteOn)
+        {
+            var noteEvent = (NoteEvent)midiEntry.Event;
+            if (noteEvent.Velocity > 0)
             {
-                var noteEvent = (NoteEvent)midiEntry.Event;
-                if (noteEvent.Velocity > 0)
+                activeNotes.Add(noteEvent.NoteNumber);
+                var noteName = GetNoteName(noteEvent.NoteNumber);
+                var velocityBar = CreateVelocityBar(noteEvent.Velocity);
+
+                lock (_consoleLock)
                 {
+                    Console.ForegroundColor = GetNoteColor(noteEvent.NoteNumber);
+                    Console.Write("▲");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Console.Write($" {timestamp} ");
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"[+{(DateTime.Now - startTime).TotalSeconds:F2}s] Note ON : {noteEvent.NoteNumber} Velocity: {noteEvent.Velocity}");
+                    Console.Write($"NOTE_ON  ");
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.Write($"{noteName,-4} ");
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.Write($"CH{noteEvent.Channel + 1:D2} ");
+                    Console.Write(velocityBar);
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                    Console.WriteLine($" │ Active: {activeNotes.Count:D3}");
                     Console.ResetColor();
                 }
 
                 midiOut.Send(MidiMessage.StartNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
             }
-            else if (midiEntry.Event.CommandCode == MidiCommandCode.NoteOff ||
-                     (midiEntry.Event.CommandCode == MidiCommandCode.NoteOn &&
-                      ((NoteEvent)midiEntry.Event).Velocity == 0))
-            {
-                var noteEvent = (NoteEvent)midiEntry.Event;
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"[+{(DateTime.Now - startTime).TotalSeconds:F2}s] Note OFF: {noteEvent.NoteNumber}");
-                Console.ResetColor();
+        }
+        else if (midiEntry.Event.CommandCode == MidiCommandCode.NoteOff ||
+                 (midiEntry.Event.CommandCode == MidiCommandCode.NoteOn &&
+                  ((NoteEvent)midiEntry.Event).Velocity == 0))
+        {
+            var noteEvent = (NoteEvent)midiEntry.Event;
+            activeNotes.Remove(noteEvent.NoteNumber);
+            var noteName = GetNoteName(noteEvent.NoteNumber);
 
-                midiOut.Send(MidiMessage.StopNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
+            lock (_consoleLock)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write("▼");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write($" {timestamp} ");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write($"NOTE_OFF ");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write($"{noteName,-4} ");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write($"CH{noteEvent.Channel + 1:D2} ");
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.Write("░░░░░░░░░░");
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.WriteLine($" │ Active: {activeNotes.Count:D3}");
+                Console.ResetColor();
+            }
+
+            midiOut.Send(MidiMessage.StopNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
+        }
+
+        // Update activity indicator
+        UpdateActivityIndicator();
+    }
+
+    private static void UpdateActivityIndicator()
+    {
+        _activityIndex = (_activityIndex + 1) % ActivityChars.Length;
+    }
+
+    private static string GetNoteName(int noteNumber)
+    {
+        var octave = (noteNumber / 12) - 1;
+        var note = NoteNames[noteNumber % 12];
+        return $"{note}{octave}";
+    }
+
+    private static ConsoleColor GetNoteColor(int noteNumber)
+    {
+        return (noteNumber % 12) switch
+        {
+            0 or 2 or 4 or 5 or 7 or 9 or 11 => ConsoleColor.White,  // Natural notes
+            _ => ConsoleColor.Magenta  // Sharp/flat notes
+        };
+    }
+
+    private static string CreateVelocityBar(int velocity)
+    {
+        var barLength = 10;
+        var filledLength = (int)((velocity / 127.0) * barLength);
+        var bar = new StringBuilder();
+
+        for (int i = 0; i < barLength; i++)
+        {
+            if (i < filledLength)
+            {
+                bar.Append('█');
+            }
+            else
+            {
+                bar.Append('░');
             }
         }
 
-        Console.WriteLine("\nDone!");
+        return bar.ToString();
     }
 
-    private static string GetMidiFilePath()
+    private static void WriteHackerMessage(string type, string message, ConsoleColor color)
     {
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.Write("[INPUT] Enter MIDI file path: ");
-        Console.ResetColor();
+        var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
 
-        var path = Console.ReadLine();
-        return path?.Trim('"') ?? string.Empty;
+        Console.Write("[");
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.Write(timestamp);
+        Console.ResetColor();
+        Console.Write("] ");
+
+        Console.Write("[");
+        Console.ForegroundColor = color;
+        Console.Write($"{type,-5}");
+        Console.ResetColor();
+        Console.Write("] ");
+
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(message);
+        Console.ResetColor();
     }
+}
+
+public class MidiEventInfo
+{
+    public long AbsoluteTime { get; set; }
+    public MidiEvent Event { get; set; } = null!;
 }
