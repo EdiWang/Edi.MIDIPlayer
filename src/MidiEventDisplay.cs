@@ -118,13 +118,13 @@ public class MidiEventDisplay(ConsoleLogger logger)
 
         return (midiEvent.EventType & 0xF0) switch
         {
-            0x80 => $"Note Off - CH {(midiEvent.EventType & 0x0F) + 1}, NOTE {midiEvent.Data[1]}, VEL {midiEvent.Data[2]}",
+            0x80 => $"CH {(midiEvent.EventType & 0x0F) + 1} | NOTE {midiEvent.Data[1]} | VEL {midiEvent.Data[2]}",
             0x90 => $"CH {(midiEvent.EventType & 0x0F) + 1} | NOTE {midiEvent.Data[1]} | VEL {midiEvent.Data[2]}",
-            0xA0 => $"Aftertouch - CH {(midiEvent.EventType & 0x0F) + 1}, NOTE {midiEvent.Data[1]}, Pressure {midiEvent.Data[2]}",
-            0xB0 => $"Control Change - CH {(midiEvent.EventType & 0x0F) + 1}, CC {midiEvent.Data[1]}, Val {midiEvent.Data[2]}",
-            0xC0 => $"Program Change - CH {(midiEvent.EventType & 0x0F) + 1}, Program {midiEvent.Data[1]}",
-            0xD0 => $"Channel Pressure - CH {(midiEvent.EventType & 0x0F) + 1}, Pressure {midiEvent.Data[1]}",
-            0xE0 => $"Pitch Bend - Ch{(midiEvent.EventType & 0x0F) + 1}, Value {((midiEvent.Data.Length > 2 ? midiEvent.Data[2] : 0) << 7) | midiEvent.Data[1]}",
+            0xA0 => $"CH {(midiEvent.EventType & 0x0F) + 1} | NOTE {midiEvent.Data[1]} | Pressure {midiEvent.Data[2]}",
+            0xB0 => $"CH {(midiEvent.EventType & 0x0F) + 1} | CC {midiEvent.Data[1]} | VAL {midiEvent.Data[2]}",
+            0xC0 => $"CH {(midiEvent.EventType & 0x0F) + 1} | Program {midiEvent.Data[1]}",
+            0xD0 => $"CH {(midiEvent.EventType & 0x0F) + 1} | Pressure {midiEvent.Data[1]}",
+            0xE0 => $"CH {(midiEvent.EventType & 0x0F) + 1} | Value {((midiEvent.Data.Length > 2 ? midiEvent.Data[2] : 0) << 7) | midiEvent.Data[1]}",
             0xF0 when midiEvent.EventType == 0xFF => GetMetaEventDescription(midiEvent.Data),
             _ => "Unknown Event"
         };
