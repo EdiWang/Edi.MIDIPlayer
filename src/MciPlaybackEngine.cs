@@ -29,9 +29,9 @@ public class MciPlaybackEngine : IDisposable
         _logger = logger;
     }
 
-    public async Task<bool> PlayFileAsync(string filePath)
+    public async Task<bool> PlayFileAsync(string filePath, CancellationToken cancellationToken = default)
     {
-        return await Task.Run(() => TrySimplePlayback(filePath));
+        return await TrySimplePlaybackAsync(filePath, cancellationToken);
     }
 
     public async Task CleanupAllMciDevicesAsync()
@@ -58,7 +58,7 @@ public class MciPlaybackEngine : IDisposable
         }
     }
 
-    private bool TrySimplePlayback(string filePath)
+    private async Task<bool> TrySimplePlaybackAsync(string filePath, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -117,12 +117,17 @@ public class MciPlaybackEngine : IDisposable
             Console.WriteLine("Audio pipeline established - Real-time streaming initiated");
             Console.ResetColor();
 
-            // Step 4: Monitor playback
-            MonitorPlayback();
+            // Step 4: Monitor playback asynchronously
+            await MonitorPlaybackAsync(cancellationToken);
 
             // Step 5: Clean up
             StopCurrentPlayback();
             return true;
+        }
+        catch (OperationCanceledException)
+        {
+            StopCurrentPlayback();
+            return false;
         }
         catch (Exception ex)
         {
@@ -135,32 +140,37 @@ public class MciPlaybackEngine : IDisposable
         }
     }
 
-    private void MonitorPlayback()
+    private async Task MonitorPlaybackAsync(CancellationToken cancellationToken = default)
     {
-        _cancellationTokenSource = new CancellationTokenSource();
-
-        while (!_cancellationTokenSource.Token.IsCancellationRequested)
+        try
         {
-            StringBuilder status = new(255);
-            string statusCommand = $"status {_currentAlias} mode";
-            int result = mciSendString(statusCommand, status, 255, IntPtr.Zero);
-
-            // Only check status if the command succeeded
-            if (result == 0)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                string statusText = status.ToString().ToLower();
-                if (statusText.Contains("stopped") || statusText.Contains("not ready"))
-                {
-                    _logger.PrintSystemStatus("Audio Engine", "STREAM ENDED", ConsoleColor.Yellow);
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("Audio processing completed successfully");
-                    Console.ResetColor();
-                    _cancellationTokenSource.Cancel();
-                    break;
-                }
-            }
+                StringBuilder status = new(255);
+                string statusCommand = $"status {_currentAlias} mode";
+                int result = mciSendString(statusCommand, status, 255, IntPtr.Zero);
 
-            Thread.Sleep(100); // Check every 100ms
+                // Only check status if the command succeeded
+                if (result == 0)
+                {
+                    string statusText = status.ToString().ToLower();
+                    if (statusText.Contains("stopped") || statusText.Contains("not ready"))
+                    {
+                        _logger.PrintSystemStatus("Audio Engine", "STREAM ENDED", ConsoleColor.Yellow);
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("Audio processing completed successfully");
+                        Console.ResetColor();
+                        break;
+                    }
+                }
+
+                // Use async delay instead of Thread.Sleep
+                await Task.Delay(100, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when cancellation is requested
         }
     }
 
@@ -191,6 +201,7 @@ public class MciPlaybackEngine : IDisposable
         int result = mciGetErrorString(errorCode, errorBuffer, errorBuffer.Capacity);
         if (result == 0)
         {
+            errorBuffer.Clear();
             errorBuffer.Append($"MCI Error {errorCode} (no description available)");
         }
     }
@@ -200,6 +211,17 @@ public class MciPlaybackEngine : IDisposable
         if (!_disposed)
         {
             _cancellationTokenSource?.Cancel();
+            
+            // Wait briefly for async operations to complete
+            try
+            {
+                _cancellationTokenSource?.Token.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(500));
+            }
+            catch (ObjectDisposedException)
+            {
+                // Token source already disposed
+            }
+            
             StopCurrentPlayback();
 
             if (_midiOutHandle != IntPtr.Zero)
