@@ -1,4 +1,6 @@
-﻿namespace Edi.MIDIPlayer;
+﻿using NAudio.Midi;
+
+namespace Edi.MIDIPlayer;
 
 public class NoteProcessor
 {
@@ -24,7 +26,7 @@ public class NoteProcessor
         };
     }
 
-    public static void DisplayNoteOn(string timestamp, NAudio.Midi.NoteEvent noteEvent, int activeNotesCount)
+    public static void DisplayNoteOn(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
         var noteName = GetNoteName(noteEvent.NoteNumber);
         var velocityBar = ConsoleDisplay.CreateVelocityBar(noteEvent.Velocity);
@@ -70,7 +72,7 @@ public class NoteProcessor
         }
     }
 
-    public static void DisplayNoteOff(string timestamp, NAudio.Midi.NoteEvent noteEvent, int activeNotesCount)
+    public static void DisplayNoteOff(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
         var noteName = GetNoteName(noteEvent.NoteNumber);
 
@@ -115,5 +117,65 @@ public class NoteProcessor
             Console.WriteLine();
             Console.ResetColor();
         }
+    }
+
+    public static void DisplayControlChange(string timestamp, ControlChangeEvent controlEvent, int activeNotesCount)
+    {
+        var controllerName = GetControllerName(controlEvent.Controller);
+        var valueBar = ConsoleDisplay.CreateVelocityBar(controlEvent.ControllerValue);
+
+        lock (ConsoleDisplay.GetConsoleLock())
+        {
+            Console.Write("[");
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.Write(timestamp);
+            Console.ResetColor();
+            Console.Write("] ");
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write($"0x{(int)controlEvent.Controller:X2}{controlEvent.Channel:X1}{controlEvent.ControllerValue:X2} ");
+            Console.ResetColor();
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write("◄ ");
+            Console.ResetColor();
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write("CTRL_CHG ");
+            Console.ResetColor();
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write($"{controllerName,-4} ");
+            Console.ResetColor();
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write($"CH{controlEvent.Channel + 1:D2} ");
+            Console.ResetColor();
+
+            Console.ForegroundColor = ConsoleColor.Magenta;
+            Console.Write($"VAL:0x{controlEvent.ControllerValue:X2} ");
+            Console.ResetColor();
+
+            Console.Write(valueBar);
+
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.Write($" │ HEAP: 0x{activeNotesCount:X3} │ CTRL: 0x{(int)controlEvent.Controller:X2}");
+            Console.WriteLine();
+            Console.ResetColor();
+        }
+    }
+
+    private static string GetControllerName(MidiController controller)
+    {
+        return controller switch
+        {
+            MidiController.Sustain => "SUST",
+            MidiController.MainVolume => "VOL",
+            MidiController.Pan => "PAN",
+            MidiController.Expression => "EXPR",
+            MidiController.Modulation => "MOD",
+            MidiController.AllNotesOff => "ANOF",
+            _ => $"CC{(int)controller:D2}"
+        };
     }
 }
