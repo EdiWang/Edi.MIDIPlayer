@@ -11,11 +11,25 @@ public class ConsoleDisplay
     public static void DisplayHackerBanner()
     {
         Console.ForegroundColor = ConsoleColor.Green;
+
+        string pianoArt = @"
+ _______________________________________________________
+|:::::: o o o o . |..... . .. . | [  ]  o o o o o ::::::|
+|:::::: o o o o   | ..  . ..... |       o o o o o ::::::|
+|::::::___________|__..._...__._|_________________::::::|
+| # # | # # # | # # | # # # | # # | # # # | # # | # # # |
+| # # | # # # | # # | # # # | # # | # # # | # # | # # # |
+| # # | # # # | # # | # # # | # # | # # # | # # | # # # |
+| | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|
+        ";
+
+        Console.WriteLine(pianoArt);
+
         Console.ResetColor();
 
         WriteMessage("INIT", "EDI.MIDIPLAYER Terminal", ConsoleColor.Cyan);
         Thread.Sleep(500);
-        Console.WriteLine();
     }
 
     public static void WriteMessage(string type, string message, ConsoleColor color)

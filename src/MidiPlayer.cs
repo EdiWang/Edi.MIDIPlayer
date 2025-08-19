@@ -57,10 +57,11 @@ public class MidiPlayer
         var tempoMap = TempoManager.BuildTempoMap(allEvents, ticksPerQuarterNote);
 
         ConsoleDisplay.WriteMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
-        Thread.Sleep(1000);
-
-        Console.WriteLine();
+        Thread.Sleep(500);
         ConsoleDisplay.WriteMessage("LIVE", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
+
+        // Write a divider line
+        Console.WriteLine(new string('-', 81), ConsoleColor.DarkGray);
 
         var playbackStart = stopwatch.Elapsed;
 
