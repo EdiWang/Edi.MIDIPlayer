@@ -7,13 +7,21 @@ public class MidiPlayer
 {
     public static async Task PlayMidiFileAsync(string filePath)
     {
+        MidiOut? midiOut = null;
         try
         {
             var midiFile = new MidiFile(filePath, false);
 
             ConsoleDisplay.WriteMessage("SCAN", "0xBEEFCAFE", $"Detected {midiFile.Tracks:X2} tracks, {midiFile.DeltaTicksPerQuarterNote:X4} ticks/quarter", ConsoleColor.Gray);
 
-            using var midiOut = new MidiOut(0);
+            // Fix: Check for available MIDI devices before creating MidiOut
+            if (MidiOut.NumberOfDevices == 0)
+            {
+                ConsoleDisplay.WriteMessage("ERROR", "0xDEADDEAD", "No MIDI output devices available", ConsoleColor.Red);
+                return;
+            }
+
+            midiOut = new MidiOut(0);
 
             // Simple event collection without parallel processing
             var allEvents = new List<MidiEventInfo>();
@@ -33,6 +41,10 @@ public class MidiPlayer
         catch (Exception ex)
         {
             ConsoleDisplay.WriteMessage("ERROR", "0xFFFFFFF", $"Execution failed: {ex.Message}", ConsoleColor.Red);
+        }
+        finally
+        {
+            midiOut?.Dispose();
         }
     }
 
