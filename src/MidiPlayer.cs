@@ -77,36 +77,42 @@ public class MidiPlayer
         var elapsed = stopwatch.Elapsed;
         var timestamp = $"{elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds:D3}";
 
-        if (midiEntry.Event.CommandCode == MidiCommandCode.NoteOn)
+        switch (midiEntry.Event.CommandCode)
         {
-            var noteEvent = (NoteEvent)midiEntry.Event;
-            if (noteEvent.Velocity > 0)
-            {
-                activeNotes.Add(noteEvent.NoteNumber);
-                NoteProcessor.DisplayNoteOn(timestamp, noteEvent, activeNotes.Count);
-                midiOut.Send(MidiMessage.StartNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
-            }
-        }
-        else if (midiEntry.Event.CommandCode == MidiCommandCode.NoteOff ||
-                 (midiEntry.Event.CommandCode == MidiCommandCode.NoteOn &&
-                  ((NoteEvent)midiEntry.Event).Velocity == 0))
-        {
-            var noteEvent = (NoteEvent)midiEntry.Event;
-            activeNotes.Remove(noteEvent.NoteNumber);
-            NoteProcessor.DisplayNoteOff(timestamp, noteEvent, activeNotes.Count);
-            midiOut.Send(MidiMessage.StopNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
-        }
-        else if (midiEntry.Event.CommandCode == MidiCommandCode.ControlChange)
-        {
-            var controlEvent = (ControlChangeEvent)midiEntry.Event;
-            ConsoleDisplay.WriteMessage("CTRL", "0xC0NTROL", $"Control Change: {controlEvent.Controller} Value: {controlEvent.ControllerValue}", ConsoleColor.Cyan);
-            midiOut.Send(MidiMessage.ChangeControl((int)controlEvent.Controller, controlEvent.ControllerValue, controlEvent.Channel).RawData);
-        }
-        else if (midiEntry.Event.CommandCode == MidiCommandCode.PatchChange)
-        {
-            var programEvent = (PatchChangeEvent)midiEntry.Event;
-            ConsoleDisplay.WriteMessage("PROG", "0xPR0GRAM", $"Program Change: {programEvent.Patch}", ConsoleColor.Magenta);
-            midiOut.Send(MidiMessage.ChangePatch(programEvent.Patch, programEvent.Channel).RawData);
+            case MidiCommandCode.NoteOn:
+                var noteEvent = (NoteEvent)midiEntry.Event;
+                if (noteEvent.Velocity > 0)
+                {
+                    activeNotes.Add(noteEvent.NoteNumber);
+                    NoteProcessor.DisplayNoteOn(timestamp, noteEvent, activeNotes.Count);
+                    midiOut.Send(MidiMessage.StartNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
+                }
+                else
+                {
+                    activeNotes.Remove(noteEvent.NoteNumber);
+                    NoteProcessor.DisplayNoteOff(timestamp, noteEvent, activeNotes.Count);
+                    midiOut.Send(MidiMessage.StopNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
+                }
+                break;
+
+            case MidiCommandCode.NoteOff:
+                var noteOffEvent = (NoteEvent)midiEntry.Event;
+                activeNotes.Remove(noteOffEvent.NoteNumber);
+                NoteProcessor.DisplayNoteOff(timestamp, noteOffEvent, activeNotes.Count);
+                midiOut.Send(MidiMessage.StopNote(noteOffEvent.NoteNumber, noteOffEvent.Velocity, noteOffEvent.Channel).RawData);
+                break;
+
+            case MidiCommandCode.ControlChange:
+                var controlEvent = (ControlChangeEvent)midiEntry.Event;
+                ConsoleDisplay.WriteMessage("CTRL", "0xC0NTROL", $"Control Change: {controlEvent.Controller} Value: {controlEvent.ControllerValue}", ConsoleColor.Cyan);
+                midiOut.Send(MidiMessage.ChangeControl((int)controlEvent.Controller, controlEvent.ControllerValue, controlEvent.Channel).RawData);
+                break;
+
+            case MidiCommandCode.PatchChange:
+                var programEvent = (PatchChangeEvent)midiEntry.Event;
+                ConsoleDisplay.WriteMessage("PROG", "0xPR0GRAM", $"Program Change: {programEvent.Patch}", ConsoleColor.Magenta);
+                midiOut.Send(MidiMessage.ChangePatch(programEvent.Patch, programEvent.Channel).RawData);
+                break;
         }
 
         // Update activity indicator
