@@ -1,9 +1,21 @@
-﻿namespace Edi.MIDIPlayer;
+﻿using System.Runtime.InteropServices;
+
+namespace Edi.MIDIPlayer;
 
 internal class Program
 {
     static async Task Main(string[] args)
     {
+        // Check if running on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("ERROR: This program is currently Windows only.");
+            Console.WriteLine("The MIDI player requires Windows-specific audio subsystems to function properly.");
+            Console.ResetColor();
+            Environment.Exit(1);
+        }
+
         try
         {
             ConsoleDisplay.Initialize();
