@@ -29,7 +29,7 @@ internal class Program
 
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
-                WriteMessage("ERROR", "MIDI file not found or invalid path", ConsoleColor.Red);
+                WriteMessage("ERROR", "0xDEADBEEF", "MIDI file not found or invalid path", ConsoleColor.Red);
                 return;
             }
 
@@ -37,11 +37,11 @@ internal class Program
         }
         catch (Exception ex)
         {
-            WriteMessage("FATAL", $"Unexpected error: {ex.Message}", ConsoleColor.Red);
+            WriteMessage("FATAL", "0xC0000005", $"Unexpected error: {ex.Message}", ConsoleColor.Red);
         }
         finally
         {
-            WriteMessage("SYSTEM", "Press any key to exit...", ConsoleColor.Yellow);
+            WriteMessage("SYSTEM", "0x00000000", "Press any key to exit...", ConsoleColor.Yellow);
             Console.ReadKey();
         }
     }
@@ -51,8 +51,7 @@ internal class Program
         Console.ForegroundColor = ConsoleColor.Green;
         Console.ResetColor();
 
-        WriteMessage("INIT", "EDI.MIDIPLAYER Terminal", ConsoleColor.Cyan);
-        WriteMessage("INIT", "Initializing audio subsystems...", ConsoleColor.Gray);
+        WriteMessage("INIT", "0x7FF00000", "EDI.MIDIPLAYER Terminal", ConsoleColor.Cyan);
         Thread.Sleep(500);
         Console.WriteLine();
     }
@@ -61,12 +60,12 @@ internal class Program
     {
         if (args.Length > 0)
         {
-            // WriteHackerMessage("INPUT", $"Using command line path: {args[0]}", ConsoleColor.Cyan);
+            // WriteMessage("ARGS", "0x00401000", $"Command line injection: {args[0]}", ConsoleColor.Cyan);
             return args[0];
         }
 
-        WriteMessage("INPUT", "Enter MIDI file path for injection:", ConsoleColor.Yellow);
-        Console.Write("     > ");
+        WriteMessage("INPUT", "0x00000001", "Enter MIDI file path for injection:", ConsoleColor.Yellow);
+        Console.Write("     0x1234 > ");
         Console.ForegroundColor = ConsoleColor.White;
 
         var path = Console.ReadLine()?.Trim('"') ?? string.Empty;
@@ -79,11 +78,11 @@ internal class Program
     {
         try
         {
-            // WriteMessage("LOAD", $"Reading MIDI data from: {Path.GetFileName(filePath)}", ConsoleColor.Cyan);
+            // WriteMessage("LOAD", "0x4000C000", $"Reading MIDI bytecode: {Path.GetFileName(filePath)}", ConsoleColor.Cyan);
 
             var midiFile = new MidiFile(filePath, false);
 
-            WriteMessage("SCAN", $"Detected {midiFile.Tracks} tracks, {midiFile.DeltaTicksPerQuarterNote} ticks/quarter", ConsoleColor.Gray);
+            WriteMessage("SCAN", "0xBEEFCAFE", $"Detected {midiFile.Tracks:X2} tracks, {midiFile.DeltaTicksPerQuarterNote:X4} ticks/quarter", ConsoleColor.Gray);
 
             using var midiOut = new MidiOut(0);
 
@@ -98,68 +97,111 @@ internal class Program
             }
             allEvents = [.. allEvents.OrderBy(e => e.AbsoluteTime)];
 
-            WriteMessage("PROC", $"Processed {allEvents.Count} MIDI events", ConsoleColor.Green);
+            WriteMessage("PROC", "0xDEADC0DE", $"Processed 0x{allEvents.Count:X} MIDI opcodes", ConsoleColor.Green);
 
-            // Get initial tempo (default to 500ms/quarter note if missing)
-            int ticksPerQuarterNote = midiFile.DeltaTicksPerQuarterNote;
-            double tempo = 500000; // microseconds per quarter note (default 120 BPM)
-
-            // Find tempo if specified
-            foreach (var ev in allEvents)
-            {
-                if (ev.Event is MetaEvent meta && meta.MetaEventType == MetaEventType.SetTempo)
-                {
-                    tempo = ((TempoEvent)meta).MicrosecondsPerQuarterNote;
-                    var bpm = 60000000.0 / tempo;
-                    WriteMessage("TEMPO", $"BPM: {bpm:F1} ({tempo:F0} μs/quarter)", ConsoleColor.Magenta);
-                    break;
-                }
-            }
-
-            await PlayEventsAsync(allEvents, midiOut, tempo, ticksPerQuarterNote);
+            await PlayEventsAsync(allEvents, midiOut, midiFile.DeltaTicksPerQuarterNote);
         }
         catch (Exception ex)
         {
-            WriteMessage("ERROR", $"Playback failed: {ex.Message}", ConsoleColor.Red);
+            WriteMessage("ERROR", "0xFFFFFFF", $"Execution failed: {ex.Message}", ConsoleColor.Red);
         }
     }
 
-    private static async Task PlayEventsAsync(List<MidiEventInfo> allEvents, MidiOut midiOut, double tempo, int ticksPerQuarterNote)
+    private static async Task PlayEventsAsync(List<MidiEventInfo> allEvents, MidiOut midiOut, int ticksPerQuarterNote)
     {
         var stopwatch = Stopwatch.StartNew();
-        long lastTime = 0;
         var activeNotes = new HashSet<int>();
 
-        WriteMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
+        // Build tempo map
+        var tempoMap = BuildTempoMap(allEvents, ticksPerQuarterNote);
+
+        WriteMessage("EXEC", "0xC0FFEE", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
         Thread.Sleep(1000);
 
         Console.WriteLine();
-        WriteMessage("LIVE", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
+        WriteMessage("LIVE", "0x1337", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
+
+        var playbackStart = stopwatch.Elapsed;
 
         foreach (var midiEntry in allEvents)
         {
-            // Calculate real-time delay
-            long deltaTicks = midiEntry.AbsoluteTime - lastTime;
-            double msPerTick = tempo / 1000.0 / ticksPerQuarterNote;
-            int delayMs = (int)(deltaTicks * msPerTick);
+            // Calculate the expected time for this event
+            var expectedTime = playbackStart.Add(TicksToTimeSpan(midiEntry.AbsoluteTime, tempoMap, ticksPerQuarterNote));
+            var currentTime = stopwatch.Elapsed;
 
-            if (delayMs > 0)
+            // Wait until it's time to play this event
+            var delayNeeded = expectedTime - currentTime;
+            if (delayNeeded > TimeSpan.Zero)
             {
-                await Task.Delay(delayMs);
+                await Task.Delay(delayNeeded);
             }
-            lastTime = midiEntry.AbsoluteTime;
 
             ProcessMidiEvent(midiEntry, midiOut, stopwatch, activeNotes);
         }
 
-        WriteMessage("COMP", "MIDI injection completed successfully", ConsoleColor.Green);
-        WriteMessage("STATS", $"Active notes at end: {activeNotes.Count}", ConsoleColor.Gray);
+        WriteMessage("COMP", "0xABCD", "MIDI injection terminated successfully", ConsoleColor.Green);
+        WriteMessage("STATS", "0x5000D000", $"Final buffer state: 0x{activeNotes.Count:X2} active notes", ConsoleColor.Gray);
+    }
+
+    private static List<TempoChange> BuildTempoMap(List<MidiEventInfo> allEvents, int ticksPerQuarterNote)
+    {
+        var tempoMap = new List<TempoChange>
+        {
+            new() { Tick = 0, MicrosecondsPerQuarterNote = 500000 } // Default 120 BPM
+        };
+
+        foreach (var eventInfo in allEvents)
+        {
+            if (eventInfo.Event is MetaEvent meta && meta.MetaEventType == MetaEventType.SetTempo)
+            {
+                var tempoEvent = (TempoEvent)meta;
+                tempoMap.Add(new TempoChange 
+                { 
+                    Tick = eventInfo.AbsoluteTime, 
+                    MicrosecondsPerQuarterNote = tempoEvent.MicrosecondsPerQuarterNote 
+                });
+
+                var bpm = 60000000.0 / tempoEvent.MicrosecondsPerQuarterNote;
+                WriteMessage("TEMPO", "0xBEAT", $"BPM: {bpm:F1} (0x{tempoEvent.MicrosecondsPerQuarterNote:X} μs/quarter)", ConsoleColor.Magenta);
+            }
+        }
+
+        return tempoMap;
+    }
+
+    private static TimeSpan TicksToTimeSpan(long ticks, List<TempoChange> tempoMap, int ticksPerQuarterNote)
+    {
+        var totalMicroseconds = 0.0;
+        var currentTick = 0L;
+
+        for (int i = 0; i < tempoMap.Count; i++)
+        {
+            var tempoChange = tempoMap[i];
+            var nextTick = (i + 1 < tempoMap.Count) ? tempoMap[i + 1].Tick : ticks;
+            
+            if (nextTick > ticks)
+                nextTick = ticks;
+
+            if (nextTick > currentTick)
+            {
+                var ticksInThisSegment = nextTick - currentTick;
+                // Use the actual ticks per quarter note from the MIDI file
+                var microsecondsPerTick = (double)tempoChange.MicrosecondsPerQuarterNote / ticksPerQuarterNote;
+                totalMicroseconds += ticksInThisSegment * microsecondsPerTick;
+            }
+
+            currentTick = nextTick;
+            if (currentTick >= ticks)
+                break;
+        }
+
+        return TimeSpan.FromMilliseconds(totalMicroseconds / 1000.0);
     }
 
     private static void ProcessMidiEvent(MidiEventInfo midiEntry, MidiOut midiOut, Stopwatch stopwatch, HashSet<int> activeNotes)
     {
         var elapsed = stopwatch.Elapsed;
-        var timestamp = $"{elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+        var timestamp = $"{elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds:D3}";
 
         if (midiEntry.Event.CommandCode == MidiCommandCode.NoteOn)
         {
@@ -172,19 +214,41 @@ internal class Program
 
                 lock (_consoleLock)
                 {
-                    Console.ForegroundColor = GetNoteColor(noteEvent.NoteNumber);
-                    Console.Write("▲");
-                    Console.ForegroundColor = ConsoleColor.White;
-                    Console.Write($" {timestamp} ");
+                    Console.Write("[");
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    Console.Write(timestamp);
+                    Console.ResetColor();
+                    Console.Write("] ");
+
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.Write($"NOTE_ON  ");
+                    Console.Write($"0x{noteEvent.NoteNumber:X2}{noteEvent.Channel:X1}{noteEvent.Velocity:X2} ");
+                    Console.ResetColor();
+
+                    Console.ForegroundColor = GetNoteColor(noteEvent.NoteNumber);
+                    Console.Write("▲ ");
+                    Console.ResetColor();
+
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.Write("NOTE_ON  ");
+                    Console.ResetColor();
+
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Write($"{noteName,-4} ");
+                    Console.ResetColor();
+
                     Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.Write($"CH{noteEvent.Channel + 1:D2} ");
+                    Console.ResetColor();
+
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.Write($"VEL:0x{noteEvent.Velocity:X2} ");
+                    Console.ResetColor();
+
                     Console.Write(velocityBar);
+
                     Console.ForegroundColor = ConsoleColor.Gray;
-                    Console.WriteLine($" │ Active: {activeNotes.Count:D3}");
+                    Console.Write($" │ HEAP: 0x{activeNotes.Count:X3} │ NOTE: 0x{noteEvent.NoteNumber:X2}");
+                    Console.WriteLine();
                     Console.ResetColor();
                 }
 
@@ -201,20 +265,43 @@ internal class Program
 
             lock (_consoleLock)
             {
+                Console.Write("[");
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.Write(timestamp);
+                Console.ResetColor();
+                Console.Write("] ");
+
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.Write("▼");
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.Write($" {timestamp} ");
+                Console.Write($"0x{noteEvent.NoteNumber:X2}{noteEvent.Channel:X1}00 ");
+                Console.ResetColor();
+
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.Write($"NOTE_OFF ");
+                Console.Write("▼ ");
+                Console.ResetColor();
+
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write("NOTE_OFF ");
+                Console.ResetColor();
+
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.Write($"{noteName,-4} ");
+                Console.ResetColor();
+
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.Write($"CH{noteEvent.Channel + 1:D2} ");
+                Console.ResetColor();
+
+                Console.ForegroundColor = ConsoleColor.DarkRed;
+                Console.Write("VEL:0x00 ");
+                Console.ResetColor();
+
                 Console.ForegroundColor = ConsoleColor.DarkGray;
                 Console.Write("░░░░░░░░░░");
+                Console.ResetColor();
+
                 Console.ForegroundColor = ConsoleColor.Gray;
-                Console.WriteLine($" │ Active: {activeNotes.Count:D3}");
+                Console.Write($" │ HEAP: 0x{activeNotes.Count:X3} │ NOTE: 0x{noteEvent.NoteNumber:X2}");
+                Console.WriteLine();
                 Console.ResetColor();
             }
 
@@ -252,28 +339,40 @@ internal class Program
         var filledLength = (int)((velocity / 127.0) * barLength);
         var bar = new StringBuilder();
 
+        Console.ForegroundColor = ConsoleColor.Green;
         for (int i = 0; i < barLength; i++)
         {
             if (i < filledLength)
             {
+                if (i < 3) Console.ForegroundColor = ConsoleColor.Green;
+                else if (i < 7) Console.ForegroundColor = ConsoleColor.Yellow;
+                else Console.ForegroundColor = ConsoleColor.Red;
                 bar.Append('█');
             }
             else
             {
+                Console.ForegroundColor = ConsoleColor.DarkGray;
                 bar.Append('░');
             }
         }
+        Console.ResetColor();
 
         return bar.ToString();
     }
 
-    private static void WriteMessage(string type, string message, ConsoleColor color)
+    private static void WriteMessage(string type, string hexCode, string message, ConsoleColor color)
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
 
         Console.Write("[");
         Console.ForegroundColor = ConsoleColor.DarkGray;
         Console.Write(timestamp);
+        Console.ResetColor();
+        Console.Write("] ");
+
+        Console.Write("[");
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.Write(hexCode);
         Console.ResetColor();
         Console.Write("] ");
 
@@ -287,10 +386,4 @@ internal class Program
         Console.WriteLine(message);
         Console.ResetColor();
     }
-}
-
-public class MidiEventInfo
-{
-    public long AbsoluteTime { get; set; }
-    public MidiEvent Event { get; set; } = null!;
 }
