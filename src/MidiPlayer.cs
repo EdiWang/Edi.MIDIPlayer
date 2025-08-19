@@ -12,12 +12,12 @@ public class MidiPlayer
         {
             var midiFile = new MidiFile(filePath, false);
 
-            ConsoleDisplay.WriteMessage("SCAN", "0xBEEFCAFE", $"Detected {midiFile.Tracks:X2} tracks, {midiFile.DeltaTicksPerQuarterNote:X4} ticks/quarter", ConsoleColor.Gray);
+            ConsoleDisplay.WriteMessage("SCAN", $"Detected {midiFile.Tracks:X2} tracks, {midiFile.DeltaTicksPerQuarterNote:X4} ticks/quarter", ConsoleColor.Gray);
 
             // Fix: Check for available MIDI devices before creating MidiOut
             if (MidiOut.NumberOfDevices == 0)
             {
-                ConsoleDisplay.WriteMessage("ERROR", "0xDEADDEAD", "No MIDI output devices available", ConsoleColor.Red);
+                ConsoleDisplay.WriteMessage("ERROR", "No MIDI output devices available", ConsoleColor.Red);
                 return;
             }
 
@@ -34,13 +34,13 @@ public class MidiPlayer
             }
             allEvents = [.. allEvents.OrderBy(e => e.AbsoluteTime)];
 
-            ConsoleDisplay.WriteMessage("PROC", "0xDEADC0DE", $"Processed 0x{allEvents.Count:X} MIDI opcodes", ConsoleColor.Green);
+            ConsoleDisplay.WriteMessage("PROC", $"Processed 0x{allEvents.Count:X} MIDI opcodes", ConsoleColor.Green);
 
             await PlayEventsAsync(allEvents, midiOut, midiFile.DeltaTicksPerQuarterNote);
         }
         catch (Exception ex)
         {
-            ConsoleDisplay.WriteMessage("ERROR", "0xFFFFFFF", $"Execution failed: {ex.Message}", ConsoleColor.Red);
+            ConsoleDisplay.WriteMessage("ERROR", $"Execution failed: {ex.Message}", ConsoleColor.Red);
         }
         finally
         {
@@ -56,11 +56,11 @@ public class MidiPlayer
         // Build tempo map
         var tempoMap = TempoManager.BuildTempoMap(allEvents, ticksPerQuarterNote);
 
-        ConsoleDisplay.WriteMessage("EXEC", "0xC0FFEE", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
+        ConsoleDisplay.WriteMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
         Thread.Sleep(1000);
 
         Console.WriteLine();
-        ConsoleDisplay.WriteMessage("LIVE", "0x1337", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
+        ConsoleDisplay.WriteMessage("LIVE", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
 
         var playbackStart = stopwatch.Elapsed;
 
@@ -80,8 +80,8 @@ public class MidiPlayer
             ProcessMidiEvent(midiEntry, midiOut, stopwatch, activeNotes);
         }
 
-        ConsoleDisplay.WriteMessage("COMP", "0xABCD", "MIDI injection terminated successfully", ConsoleColor.Green);
-        ConsoleDisplay.WriteMessage("STATS", "0x5000D000", $"Final buffer state: 0x{activeNotes.Count:X2} active notes", ConsoleColor.Gray);
+        ConsoleDisplay.WriteMessage("COMP", "MIDI injection terminated successfully", ConsoleColor.Green);
+        ConsoleDisplay.WriteMessage("STATS", $"Final buffer state: 0x{activeNotes.Count:X2} active notes", ConsoleColor.Gray);
     }
 
     private static void ProcessMidiEvent(MidiEventInfo midiEntry, MidiOut midiOut, Stopwatch stopwatch, HashSet<int> activeNotes)
@@ -122,7 +122,7 @@ public class MidiPlayer
 
             case MidiCommandCode.PatchChange:
                 var programEvent = (PatchChangeEvent)midiEntry.Event;
-                ConsoleDisplay.WriteMessage("PROG", "0xPR0GRAM", $"Program Change: {programEvent.Patch}", ConsoleColor.Magenta);
+                ConsoleDisplay.WriteMessage("PROG", $"Program Change: {programEvent.Patch}", ConsoleColor.Magenta);
                 midiOut.Send(MidiMessage.ChangePatch(programEvent.Patch, programEvent.Channel).RawData);
                 break;
         }

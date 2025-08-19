@@ -23,7 +23,7 @@ public class TempoManager
                 });
 
                 var bpm = 60000000.0 / tempoEvent.MicrosecondsPerQuarterNote;
-                ConsoleDisplay.WriteMessage("TEMPO", "0xBEAT", $"BPM: {bpm:F1} (0x{tempoEvent.MicrosecondsPerQuarterNote:X} ¦Ìs/quarter)", ConsoleColor.Magenta);
+                ConsoleDisplay.WriteMessage("TEMPO", $"BPM: {bpm:F1} (0x{tempoEvent.MicrosecondsPerQuarterNote:X} ¦Ìs/quarter)", ConsoleColor.Magenta);
             }
         }
 

@@ -28,7 +28,7 @@ internal class Program
 
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
-                ConsoleDisplay.WriteMessage("ERROR", "0xDEADBEEF", "MIDI file not found or invalid path", ConsoleColor.Red);
+                ConsoleDisplay.WriteMessage("ERROR", "MIDI file not found or invalid path", ConsoleColor.Red);
                 return;
             }
 
@@ -36,11 +36,11 @@ internal class Program
         }
         catch (Exception ex)
         {
-            ConsoleDisplay.WriteMessage("FATAL", "0xC0000005", $"Unexpected error: {ex.Message}", ConsoleColor.Red);
+            ConsoleDisplay.WriteMessage("FATAL", $"Unexpected error: {ex.Message}", ConsoleColor.Red);
         }
         finally
         {
-            ConsoleDisplay.WriteMessage("SYSTEM", "0x00000000", "Press any key to exit...", ConsoleColor.Yellow);
+            ConsoleDisplay.WriteMessage("SYSTEM", "Press any key to exit...", ConsoleColor.Yellow);
             Console.ReadKey();
         }
     }

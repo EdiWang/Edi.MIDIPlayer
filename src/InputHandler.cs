@@ -9,7 +9,7 @@ public class InputHandler
             return args[0];
         }
 
-        ConsoleDisplay.WriteMessage("INPUT", "0x00000001", "Enter MIDI file path for injection:", ConsoleColor.Yellow);
+        ConsoleDisplay.WriteMessage("INPUT", "Enter MIDI file path for injection:", ConsoleColor.Yellow);
         Console.Write("     0x1234 > ");
         Console.ForegroundColor = ConsoleColor.White;
 

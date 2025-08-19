@@ -13,12 +13,12 @@ public class ConsoleDisplay
         Console.ForegroundColor = ConsoleColor.Green;
         Console.ResetColor();
 
-        WriteMessage("INIT", "0x7FF00000", "EDI.MIDIPLAYER Terminal", ConsoleColor.Cyan);
+        WriteMessage("INIT", "EDI.MIDIPLAYER Terminal", ConsoleColor.Cyan);
         Thread.Sleep(500);
         Console.WriteLine();
     }
 
-    public static void WriteMessage(string type, string hexCode, string message, ConsoleColor color)
+    public static void WriteMessage(string type, string message, ConsoleColor color)
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
 
@@ -26,13 +26,7 @@ public class ConsoleDisplay
         Console.ForegroundColor = ConsoleColor.DarkGray;
         Console.Write(timestamp);
         Console.ResetColor();
-        Console.Write("] ");
-
-        Console.Write("[");
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.Write(hexCode);
-        Console.ResetColor();
-        Console.Write("] ");
+        Console.Write("] "); 
 
         Console.Write("[");
         Console.ForegroundColor = color;
