@@ -96,6 +96,18 @@ public class MidiPlayer
             NoteProcessor.DisplayNoteOff(timestamp, noteEvent, activeNotes.Count);
             midiOut.Send(MidiMessage.StopNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
         }
+        else if (midiEntry.Event.CommandCode == MidiCommandCode.ControlChange)
+        {
+            var controlEvent = (ControlChangeEvent)midiEntry.Event;
+            ConsoleDisplay.WriteMessage("CTRL", "0xC0NTROL", $"Control Change: {controlEvent.Controller} Value: {controlEvent.ControllerValue}", ConsoleColor.Cyan);
+            midiOut.Send(MidiMessage.ChangeControl((int)controlEvent.Controller, controlEvent.ControllerValue, controlEvent.Channel).RawData);
+        }
+        else if (midiEntry.Event.CommandCode == MidiCommandCode.PatchChange)
+        {
+            var programEvent = (PatchChangeEvent)midiEntry.Event;
+            ConsoleDisplay.WriteMessage("PROG", "0xPR0GRAM", $"Program Change: {programEvent.Patch}", ConsoleColor.Magenta);
+            midiOut.Send(MidiMessage.ChangePatch(programEvent.Patch, programEvent.Channel).RawData);
+        }
 
         // Update activity indicator
         ConsoleDisplay.UpdateActivityIndicator();
