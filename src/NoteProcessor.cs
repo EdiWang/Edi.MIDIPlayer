@@ -39,10 +39,6 @@ public class NoteProcessor
             Console.ResetColor();
             Console.Write("] ");
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.Write($"0x{noteEvent.NoteNumber:X2}{noteEvent.Channel:X1}{noteEvent.Velocity:X2} ");
-            Console.ResetColor();
-
             Console.ForegroundColor = GetNoteColor(noteEvent.NoteNumber);
             Console.Write("▲ ");
             Console.ResetColor();
@@ -66,7 +62,7 @@ public class NoteProcessor
             Console.Write(velocityBar);
 
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.Write($" │ HEAP: 0x{activeNotesCount:X3} │ NOTE: 0x{noteEvent.NoteNumber:X2}");
+            Console.Write($" │ ACTV: 0x{activeNotesCount:X2} │ NOTE: 0x{noteEvent.NoteNumber:X2}");
             Console.WriteLine();
             Console.ResetColor();
         }
@@ -83,10 +79,6 @@ public class NoteProcessor
             Console.Write(timestamp);
             Console.ResetColor();
             Console.Write("] ");
-
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.Write($"0x{noteEvent.NoteNumber:X2}{noteEvent.Channel:X1}00 ");
-            Console.ResetColor();
 
             Console.ForegroundColor = ConsoleColor.Red;
             Console.Write("▼ ");
@@ -113,7 +105,7 @@ public class NoteProcessor
             Console.ResetColor();
 
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.Write($" │ HEAP: 0x{activeNotesCount:X3} │ NOTE: 0x{noteEvent.NoteNumber:X2}");
+            Console.Write($" │ ACTV: 0x{activeNotesCount:X2} │ NOTE: 0x{noteEvent.NoteNumber:X2}");
             Console.WriteLine();
             Console.ResetColor();
         }
@@ -131,10 +123,6 @@ public class NoteProcessor
             Console.Write(timestamp);
             Console.ResetColor();
             Console.Write("] ");
-
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.Write($"0x{(int)controlEvent.Controller:X2}{controlEvent.Channel:X1}{controlEvent.ControllerValue:X2} ");
-            Console.ResetColor();
 
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.Write("◄ ");
@@ -159,7 +147,7 @@ public class NoteProcessor
             Console.Write(valueBar);
 
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.Write($" │ HEAP: 0x{activeNotesCount:X3} │ CTRL: 0x{(int)controlEvent.Controller:X2}");
+            Console.Write($" │ ACTV: 0x{activeNotesCount:X2} │ CTRL: 0x{(int)controlEvent.Controller:X2}");
             Console.WriteLine();
             Console.ResetColor();
         }
