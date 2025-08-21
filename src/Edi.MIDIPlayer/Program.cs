@@ -24,15 +24,30 @@ internal class Program
 
             ConsoleDisplay.DisplayHackerBanner();
 
-            string filePath = InputHandler.GetMidiFilePath(args);
+            string fileUrl = InputHandler.GetMidiFileUrl(args);
 
-            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            if (string.IsNullOrEmpty(fileUrl))
             {
-                ConsoleDisplay.WriteMessage("ERROR", "MIDI file not found or invalid path", ConsoleColor.Red);
+                ConsoleDisplay.WriteMessage("ERROR", "MIDI file path or URL not provided", ConsoleColor.Red);
                 return;
             }
 
-            await MidiPlayer.PlayMidiFileAsync(filePath);
+            // Check if it's a URL or local file
+            if (Uri.TryCreate(fileUrl, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                // It's a URL
+                await MidiPlayer.PlayMidiFileAsync(fileUrl);
+            }
+            else
+            {
+                // It's a local file path
+                if (!File.Exists(fileUrl))
+                {
+                    ConsoleDisplay.WriteMessage("ERROR", "MIDI file not found or invalid path", ConsoleColor.Red);
+                    return;
+                }
+                await MidiPlayer.PlayMidiFileAsync(fileUrl);
+            }
         }
         catch (Exception ex)
         {

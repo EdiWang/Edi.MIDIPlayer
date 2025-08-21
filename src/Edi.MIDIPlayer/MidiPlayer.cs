@@ -5,12 +5,36 @@ namespace Edi.MIDIPlayer;
 
 public class MidiPlayer
 {
-    public static async Task PlayMidiFileAsync(string filePath)
+    public static async Task PlayMidiFileAsync(string fileUrl)
     {
         MidiOut? midiOut = null;
         try
         {
-            var midiFile = new MidiFile(filePath, false);
+            MidiFile midiFile;
+
+            // Check if it's a URL or local file
+            if (Uri.TryCreate(fileUrl, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                // Download MIDI file from URL
+                ConsoleDisplay.WriteMessage("NET", $"Downloading MIDI file from: {fileUrl}", ConsoleColor.Cyan);
+                
+                using var httpClient = new HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(30); // 30 second timeout
+                
+                var response = await httpClient.GetAsync(uri);
+                response.EnsureSuccessStatusCode();
+                
+                var midiData = await response.Content.ReadAsByteArrayAsync();
+                using var midiStream = new MemoryStream(midiData);
+                
+                ConsoleDisplay.WriteMessage("NET", $"Downloaded {midiData.Length} bytes", ConsoleColor.Green);
+                midiFile = new MidiFile(midiStream, false);
+            }
+            else
+            {
+                // Load local file
+                midiFile = new MidiFile(fileUrl, false);
+            }
 
             ConsoleDisplay.WriteMessage("SCAN", $"Detected {midiFile.Tracks:X2} tracks, {midiFile.DeltaTicksPerQuarterNote:X4} ticks/quarter", ConsoleColor.Gray);
 
@@ -37,6 +61,14 @@ public class MidiPlayer
             ConsoleDisplay.WriteMessage("PROC", $"Processed 0x{allEvents.Count:X} MIDI opcodes", ConsoleColor.Green);
 
             await PlayEventsAsync(allEvents, midiOut, midiFile.DeltaTicksPerQuarterNote);
+        }
+        catch (HttpRequestException ex)
+        {
+            ConsoleDisplay.WriteMessage("ERROR", $"Network error: {ex.Message}", ConsoleColor.Red);
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            ConsoleDisplay.WriteMessage("ERROR", "Download timeout: The request took too long to complete", ConsoleColor.Red);
         }
         catch (Exception ex)
         {
