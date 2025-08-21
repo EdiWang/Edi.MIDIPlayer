@@ -12,7 +12,14 @@ public class InputHandler
         ConsoleDisplay.WriteMessage("INPUT", "Enter MIDI file path:", ConsoleColor.Yellow);
         Console.ForegroundColor = ConsoleColor.White;
 
-        var path = Console.ReadLine()?.Trim('"') ?? string.Empty;
+        var path = Console.ReadLine()?.Trim().Trim('"') ?? string.Empty;
+        
+        // Handle null characters and other control characters as empty input
+        if (string.IsNullOrEmpty(path) || path.All(c => char.IsControl(c)))
+        {
+            path = string.Empty;
+        }
+        
         Console.ResetColor();
 
         return path;
