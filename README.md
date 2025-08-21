@@ -42,7 +42,13 @@ After installation, you can use the tool globally:
 midi-player "path\to\your\file.mid"
 ```
 
-Run without arguments to enter interactive mode:
+or play a MIDI file from Internet:
+
+```powershell
+midi-player "https://example.com/path/to/your/file.mid"
+```
+
+or run without arguments to enter interactive mode:
 
 ```powershell
 midi-player
