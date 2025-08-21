@@ -54,7 +54,7 @@ public class MidiPlayer
         var activeNotes = new HashSet<int>();
 
         // Build tempo map
-        var tempoMap = TempoManager.BuildTempoMap(allEvents, ticksPerQuarterNote);
+        var tempoMap = TempoManager.BuildTempoMap(allEvents);
 
         ConsoleDisplay.WriteMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
         Thread.Sleep(500);

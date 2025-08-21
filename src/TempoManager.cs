@@ -4,7 +4,7 @@ namespace Edi.MIDIPlayer;
 
 public class TempoManager
 {
-    public static List<TempoChange> BuildTempoMap(List<MidiEventInfo> allEvents, int ticksPerQuarterNote)
+    public static List<TempoChange> BuildTempoMap(List<MidiEventInfo> allEvents)
     {
         var tempoMap = new List<TempoChange>
         {
