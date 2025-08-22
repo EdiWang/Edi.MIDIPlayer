@@ -4,15 +4,8 @@ using NAudio.Midi;
 
 namespace Edi.MIDIPlayer.Services;
 
-public class TempoManagerService : ITempoManager
+public class TempoManagerService(IConsoleDisplay consoleDisplay) : ITempoManager
 {
-    private readonly IConsoleDisplay _consoleDisplay;
-
-    public TempoManagerService(IConsoleDisplay consoleDisplay)
-    {
-        _consoleDisplay = consoleDisplay;
-    }
-
     public List<TempoChange> BuildTempoMap(List<MidiEventInfo> allEvents)
     {
         var tempoMap = new List<TempoChange>
@@ -32,7 +25,7 @@ public class TempoManagerService : ITempoManager
                 });
 
                 var bpm = 60000000.0 / tempoEvent.MicrosecondsPerQuarterNote;
-                _consoleDisplay.WriteMessage("TEMPO", $"BPM: {bpm:F1} (0x{tempoEvent.MicrosecondsPerQuarterNote:X} ¦Ìs/quarter)", ConsoleColor.Magenta);
+                consoleDisplay.WriteMessage("TEMPO", $"BPM: {bpm:F1} (0x{tempoEvent.MicrosecondsPerQuarterNote:X} ¦Ìs/quarter)", ConsoleColor.Magenta);
             }
         }
 

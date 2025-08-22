@@ -2,15 +2,8 @@ using Edi.MIDIPlayer.Interfaces;
 
 namespace Edi.MIDIPlayer.Services;
 
-public class InputHandlerService : IInputHandler
+public class InputHandlerService(IConsoleDisplay consoleDisplay) : IInputHandler
 {
-    private readonly IConsoleDisplay _consoleDisplay;
-
-    public InputHandlerService(IConsoleDisplay consoleDisplay)
-    {
-        _consoleDisplay = consoleDisplay;
-    }
-
     public string GetMidiFileUrl(string[] args)
     {
         if (args.Length > 0)
@@ -18,7 +11,7 @@ public class InputHandlerService : IInputHandler
             return args[0];
         }
 
-        _consoleDisplay.WriteMessage("INPUT", "Enter MIDI file path or URL:", ConsoleColor.Yellow);
+        consoleDisplay.WriteMessage("INPUT", "Enter MIDI file path or URL:", ConsoleColor.Yellow);
         Console.ForegroundColor = ConsoleColor.White;
 
         var path = Console.ReadLine()?.Trim().Trim('"') ?? string.Empty;

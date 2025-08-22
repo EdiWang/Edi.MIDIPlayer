@@ -3,14 +3,9 @@ using NAudio.Midi;
 
 namespace Edi.MIDIPlayer.Services;
 
-public class MidiDeviceWrapper : IMidiDeviceWrapper
+public class MidiDeviceWrapper(int deviceId = 0) : IMidiDeviceWrapper
 {
-    private readonly MidiOut _midiOut;
-
-    public MidiDeviceWrapper(int deviceId = 0)
-    {
-        _midiOut = new MidiOut(deviceId);
-    }
+    private readonly MidiOut _midiOut = new(deviceId);
 
     public int NumberOfDevices => MidiOut.NumberOfDevices;
 

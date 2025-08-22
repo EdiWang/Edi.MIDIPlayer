@@ -3,20 +3,13 @@ using NAudio.Midi;
 
 namespace Edi.MIDIPlayer.Services;
 
-public class NoteProcessorService : INoteProcessor
+public class NoteProcessorService(IConsoleDisplay consoleDisplay) : INoteProcessor
 {
-    private readonly IConsoleDisplay _consoleDisplay;
-
     private static readonly Dictionary<int, string> NoteNames = new()
     {
         { 0, "C" }, { 1, "C#" }, { 2, "D" }, { 3, "D#" }, { 4, "E" }, { 5, "F" },
         { 6, "F#" }, { 7, "G" }, { 8, "G#" }, { 9, "A" }, { 10, "A#" }, { 11, "B" }
     };
-
-    public NoteProcessorService(IConsoleDisplay consoleDisplay)
-    {
-        _consoleDisplay = consoleDisplay;
-    }
 
     public string GetNoteName(int noteNumber)
     {
@@ -37,9 +30,9 @@ public class NoteProcessorService : INoteProcessor
     public void DisplayNoteOn(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
         var noteName = GetNoteName(noteEvent.NoteNumber);
-        var velocityBar = _consoleDisplay.CreateVelocityBar(noteEvent.Velocity);
+        var velocityBar = consoleDisplay.CreateVelocityBar(noteEvent.Velocity);
 
-        lock (_consoleDisplay.GetConsoleLock())
+        lock (consoleDisplay.GetConsoleLock())
         {
             Console.Write("[");
             Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -80,7 +73,7 @@ public class NoteProcessorService : INoteProcessor
     {
         var noteName = GetNoteName(noteEvent.NoteNumber);
 
-        lock (_consoleDisplay.GetConsoleLock())
+        lock (consoleDisplay.GetConsoleLock())
         {
             Console.Write("[");
             Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -122,9 +115,9 @@ public class NoteProcessorService : INoteProcessor
     public void DisplayControlChange(string timestamp, ControlChangeEvent controlEvent, int activeNotesCount)
     {
         var controllerName = GetControllerName(controlEvent.Controller);
-        var valueBar = _consoleDisplay.CreateVelocityBar(controlEvent.ControllerValue);
+        var valueBar = consoleDisplay.CreateVelocityBar(controlEvent.ControllerValue);
 
-        lock (_consoleDisplay.GetConsoleLock())
+        lock (consoleDisplay.GetConsoleLock())
         {
             Console.Write("[");
             Console.ForegroundColor = ConsoleColor.DarkGray;
