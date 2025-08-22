@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace Edi.MIDIPlayer;
 
-public class MidiPlayer
+public class MidiPlayer : IMidiPlayer
 {
     public static async Task PlayMidiFileAsync(string fileUrl)
     {
@@ -17,16 +17,16 @@ public class MidiPlayer
             {
                 // Download MIDI file from URL
                 ConsoleDisplay.WriteMessage("NET", $"Downloading MIDI file from: {fileUrl}", ConsoleColor.Cyan);
-                
+
                 using var httpClient = new HttpClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(30); // 30 second timeout
-                
+
                 var response = await httpClient.GetAsync(uri);
                 response.EnsureSuccessStatusCode();
-                
+
                 var midiData = await response.Content.ReadAsByteArrayAsync();
                 using var midiStream = new MemoryStream(midiData);
-                
+
                 ConsoleDisplay.WriteMessage("NET", $"Downloaded {midiData.Length} bytes", ConsoleColor.Green);
                 midiFile = new MidiFile(midiStream, false);
             }
