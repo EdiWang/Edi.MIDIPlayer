@@ -1,4 +1,5 @@
 using Edi.MIDIPlayer.Interfaces;
+using Edi.MIDIPlayer.Models;
 using NAudio.Midi;
 using System.Diagnostics;
 

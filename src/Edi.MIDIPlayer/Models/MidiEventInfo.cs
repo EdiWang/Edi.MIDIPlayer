@@ -1,6 +1,6 @@
 ﻿using NAudio.Midi;
 
-namespace Edi.MIDIPlayer;
+namespace Edi.MIDIPlayer.Models;
 
 public class MidiEventInfo
 {

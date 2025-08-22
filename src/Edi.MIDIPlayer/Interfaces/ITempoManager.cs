@@ -1,3 +1,5 @@
+using Edi.MIDIPlayer.Models;
+
 namespace Edi.MIDIPlayer.Interfaces;
 
 public interface ITempoManager

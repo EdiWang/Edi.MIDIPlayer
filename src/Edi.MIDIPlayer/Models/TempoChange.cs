@@ -1,4 +1,4 @@
-﻿namespace Edi.MIDIPlayer;
+﻿namespace Edi.MIDIPlayer.Models;
 
 public class TempoChange
 {
