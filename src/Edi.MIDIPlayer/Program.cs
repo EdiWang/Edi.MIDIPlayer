@@ -83,7 +83,14 @@ internal class Program
                 services.AddSingleton<IInputHandler, InputHandlerService>();
                 services.AddSingleton<ITempoManager, TempoManagerService>();
                 services.AddSingleton<INoteProcessor, NoteProcessorService>();
-                services.AddSingleton<IFileDownloader, FileDownloaderService>();
+
+                // Register typed HTTP client
+                services.AddHttpClient<IFileDownloader, FileDownloaderService>(client =>
+                {
+                    client.DefaultRequestHeaders.Add("User-Agent", "Edi.MIDIPlayer/1.0");
+                    client.Timeout = TimeSpan.FromMinutes(5); // Default timeout
+                });
+
                 services.AddSingleton<IMidiPlayerService, MidiPlayerService>();
             });
 }

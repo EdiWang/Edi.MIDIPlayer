@@ -2,30 +2,23 @@ using Edi.MIDIPlayer.Interfaces;
 
 namespace Edi.MIDIPlayer.Services;
 
-public class FileDownloaderService : IFileDownloader
+public class FileDownloaderService(HttpClient httpClient) : IFileDownloader
 {
-    private readonly HttpClient _httpClient;
-
-    public FileDownloaderService()
-    {
-        _httpClient = new HttpClient();
-    }
-
-    public FileDownloaderService(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-    }
+    private readonly HttpClient _httpClient = httpClient;
 
     public async Task<byte[]> DownloadAsync(string url, TimeSpan timeout)
     {
-        _httpClient.Timeout = timeout;
-        var response = await _httpClient.GetAsync(url);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsByteArrayAsync();
-    }
-
-    public void Dispose()
-    {
-        _httpClient?.Dispose();
+        using var timeoutCts = new CancellationTokenSource(timeout);
+        
+        try
+        {
+            var response = await _httpClient.GetAsync(url, timeoutCts.Token);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync(timeoutCts.Token);
+        }
+        catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested)
+        {
+            throw new TimeoutException($"The request to {url} timed out after {timeout.TotalSeconds} seconds.");
+        }
     }
 }
