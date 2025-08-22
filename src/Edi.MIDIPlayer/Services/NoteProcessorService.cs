@@ -1,8 +1,9 @@
-﻿using NAudio.Midi;
+﻿using Edi.MIDIPlayer.Interfaces;
+using NAudio.Midi;
 
-namespace Edi.MIDIPlayer;
+namespace Edi.MIDIPlayer.Services;
 
-public class NoteProcessor
+public class NoteProcessorService(IConsoleDisplay consoleDisplay) : INoteProcessor
 {
     private static readonly Dictionary<int, string> NoteNames = new()
     {
@@ -10,14 +11,14 @@ public class NoteProcessor
         { 6, "F#" }, { 7, "G" }, { 8, "G#" }, { 9, "A" }, { 10, "A#" }, { 11, "B" }
     };
 
-    public static string GetNoteName(int noteNumber)
+    public string GetNoteName(int noteNumber)
     {
         var octave = (noteNumber / 12) - 1;
         var note = NoteNames[noteNumber % 12];
         return $"{note}{octave}";
     }
 
-    public static ConsoleColor GetNoteColor(int noteNumber)
+    public ConsoleColor GetNoteColor(int noteNumber)
     {
         return (noteNumber % 12) switch
         {
@@ -26,12 +27,12 @@ public class NoteProcessor
         };
     }
 
-    public static void DisplayNoteOn(string timestamp, NoteEvent noteEvent, int activeNotesCount)
+    public void DisplayNoteOn(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
         var noteName = GetNoteName(noteEvent.NoteNumber);
-        var velocityBar = ConsoleDisplay.CreateVelocityBar(noteEvent.Velocity);
+        var velocityBar = consoleDisplay.CreateVelocityBar(noteEvent.Velocity);
 
-        lock (ConsoleDisplay.GetConsoleLock())
+        lock (consoleDisplay.GetConsoleLock())
         {
             Console.Write("[");
             Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -68,11 +69,11 @@ public class NoteProcessor
         }
     }
 
-    public static void DisplayNoteOff(string timestamp, NoteEvent noteEvent, int activeNotesCount)
+    public void DisplayNoteOff(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
         var noteName = GetNoteName(noteEvent.NoteNumber);
 
-        lock (ConsoleDisplay.GetConsoleLock())
+        lock (consoleDisplay.GetConsoleLock())
         {
             Console.Write("[");
             Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -111,12 +112,12 @@ public class NoteProcessor
         }
     }
 
-    public static void DisplayControlChange(string timestamp, ControlChangeEvent controlEvent, int activeNotesCount)
+    public void DisplayControlChange(string timestamp, ControlChangeEvent controlEvent, int activeNotesCount)
     {
         var controllerName = GetControllerName(controlEvent.Controller);
-        var valueBar = ConsoleDisplay.CreateVelocityBar(controlEvent.ControllerValue);
+        var valueBar = consoleDisplay.CreateVelocityBar(controlEvent.ControllerValue);
 
-        lock (ConsoleDisplay.GetConsoleLock())
+        lock (consoleDisplay.GetConsoleLock())
         {
             Console.Write("[");
             Console.ForegroundColor = ConsoleColor.DarkGray;

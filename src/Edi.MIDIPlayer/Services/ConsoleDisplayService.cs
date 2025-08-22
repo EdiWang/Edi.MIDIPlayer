@@ -1,14 +1,15 @@
-﻿using System.Text;
+﻿using Edi.MIDIPlayer.Interfaces;
+using System.Text;
 
-namespace Edi.MIDIPlayer;
+namespace Edi.MIDIPlayer.Services;
 
-public class ConsoleDisplay
+public class ConsoleDisplayService : IConsoleDisplay
 {
     private static readonly char[] ActivityChars = ['█', '▓', '▒', '░', '·'];
-    private static int _activityIndex = 0;
-    private static readonly Lock _consoleLock = new();
+    private int _activityIndex = 0;
+    private readonly Lock _consoleLock = new();
 
-    public static void DisplayHackerBanner()
+    public void DisplayHackerBanner()
     {
         Console.ForegroundColor = ConsoleColor.Green;
 
@@ -25,14 +26,13 @@ public class ConsoleDisplay
         ";
 
         Console.WriteLine(pianoArt);
-
         Console.ResetColor();
 
         WriteMessage("INIT", "EDI.MIDIPLAYER Terminal", ConsoleColor.Cyan);
         Thread.Sleep(500);
     }
 
-    public static void WriteMessage(string type, string message, ConsoleColor color)
+    public void WriteMessage(string type, string message, ConsoleColor color)
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
 
@@ -40,7 +40,7 @@ public class ConsoleDisplay
         Console.ForegroundColor = ConsoleColor.DarkGray;
         Console.Write(timestamp);
         Console.ResetColor();
-        Console.Write("] "); 
+        Console.Write("] ");
 
         Console.Write("[");
         Console.ForegroundColor = color;
@@ -53,14 +53,14 @@ public class ConsoleDisplay
         Console.ResetColor();
     }
 
-    public static void UpdateActivityIndicator()
+    public void UpdateActivityIndicator()
     {
         _activityIndex = (_activityIndex + 1) % ActivityChars.Length;
     }
 
-    public static Lock GetConsoleLock() => _consoleLock;
+    public Lock GetConsoleLock() => _consoleLock;
 
-    public static string CreateVelocityBar(int velocity)
+    public string CreateVelocityBar(int velocity)
     {
         var barLength = 10;
         var filledLength = (int)((velocity / 127.0) * barLength);

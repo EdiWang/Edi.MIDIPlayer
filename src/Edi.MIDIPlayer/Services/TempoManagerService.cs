@@ -1,10 +1,12 @@
+using Edi.MIDIPlayer.Interfaces;
+using Edi.MIDIPlayer.Models;
 using NAudio.Midi;
 
-namespace Edi.MIDIPlayer;
+namespace Edi.MIDIPlayer.Services;
 
-public class TempoManager
+public class TempoManagerService(IConsoleDisplay consoleDisplay) : ITempoManager
 {
-    public static List<TempoChange> BuildTempoMap(List<MidiEventInfo> allEvents)
+    public List<TempoChange> BuildTempoMap(List<MidiEventInfo> allEvents)
     {
         var tempoMap = new List<TempoChange>
         {
@@ -16,21 +18,21 @@ public class TempoManager
             if (eventInfo.Event is MetaEvent meta && meta.MetaEventType == MetaEventType.SetTempo)
             {
                 var tempoEvent = (TempoEvent)meta;
-                tempoMap.Add(new TempoChange 
-                { 
-                    Tick = eventInfo.AbsoluteTime, 
-                    MicrosecondsPerQuarterNote = tempoEvent.MicrosecondsPerQuarterNote 
+                tempoMap.Add(new TempoChange
+                {
+                    Tick = eventInfo.AbsoluteTime,
+                    MicrosecondsPerQuarterNote = tempoEvent.MicrosecondsPerQuarterNote
                 });
 
                 var bpm = 60000000.0 / tempoEvent.MicrosecondsPerQuarterNote;
-                ConsoleDisplay.WriteMessage("TEMPO", $"BPM: {bpm:F1} (0x{tempoEvent.MicrosecondsPerQuarterNote:X} ¦Ìs/quarter)", ConsoleColor.Magenta);
+                consoleDisplay.WriteMessage("TEMPO", $"BPM: {bpm:F1} (0x{tempoEvent.MicrosecondsPerQuarterNote:X} ¦Ìs/quarter)", ConsoleColor.Magenta);
             }
         }
 
         return tempoMap;
     }
 
-    public static TimeSpan TicksToTimeSpan(long ticks, List<TempoChange> tempoMap, int ticksPerQuarterNote)
+    public TimeSpan TicksToTimeSpan(long ticks, List<TempoChange> tempoMap, int ticksPerQuarterNote)
     {
         var totalMicroseconds = 0.0;
         var currentTick = 0L;
@@ -39,7 +41,7 @@ public class TempoManager
         {
             var tempoChange = tempoMap[i];
             var nextTick = (i + 1 < tempoMap.Count) ? tempoMap[i + 1].Tick : ticks;
-            
+
             if (nextTick > ticks)
                 nextTick = ticks;
 
