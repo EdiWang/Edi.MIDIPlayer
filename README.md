@@ -22,7 +22,7 @@ A command-line MIDI player that provides real-time console output of MIDI events
 ## Requirements
 
 - **Windows only** (uses Windows-specific MIDI subsystems)
-- **.NET 9.0** or later
+- **.NET 10.0** or later
 - **MIDI output device** (software or hardware synthesizer)
 - **NAudio library** (automatically installed via NuGet)
 
