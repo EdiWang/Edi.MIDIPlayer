@@ -1,11 +1,11 @@
+using Edi.MIDIPlayer.Hubs;
 using Edi.MIDIPlayer.Interfaces;
 using Microsoft.AspNetCore.SignalR;
-using Edi.MIDIPlayer.Hubs;
 using NAudio.Midi;
 
 namespace Edi.MIDIPlayer.Services;
 
-public class WebNoteProcessorService(IHubContext<MidiPlayerHub> hubContext, IConsoleDisplay consoleDisplay) : INoteProcessor
+public class WebNoteProcessorService(IHubContext<MidiPlayerHub> hubContext) : INoteProcessor
 {
     private static readonly Dictionary<int, string> NoteNames = new()
     {
