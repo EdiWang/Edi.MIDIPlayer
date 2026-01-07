@@ -167,4 +167,9 @@ public class NoteProcessorService(IConsoleDisplay consoleDisplay) : INoteProcess
             _ => $"CC{(int)controller:D2}"
         };
     }
+
+    public void SendNotePreview(int noteNumber, int velocity, int channel, double delayMs)
+    {
+        throw new NotImplementedException();
+    }
 }

@@ -9,7 +9,7 @@ public class FileDownloaderService(HttpClient httpClient) : IFileDownloader
     public async Task<byte[]> DownloadAsync(string url, TimeSpan timeout)
     {
         using var timeoutCts = new CancellationTokenSource(timeout);
-        
+
         try
         {
             var response = await _httpClient.GetAsync(url, timeoutCts.Token);
