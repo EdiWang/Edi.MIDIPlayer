@@ -4,11 +4,6 @@ namespace Edi.MIDIPlayer.Hubs;
 
 public class MidiPlayerHub : Hub
 {
-    public async Task SendNotePreview(int noteNumber, int velocity, int channel, string noteName, double delayMs)
-    {
-        await Clients.All.SendAsync("ReceiveNotePreview", noteNumber, velocity, channel, noteName, delayMs);
-    }
-
     public async Task SendNoteOn(int noteNumber, int velocity, int channel, string noteName, string timestamp)
     {
         await Clients.All.SendAsync("ReceiveNoteOn", noteNumber, velocity, channel, noteName, timestamp);

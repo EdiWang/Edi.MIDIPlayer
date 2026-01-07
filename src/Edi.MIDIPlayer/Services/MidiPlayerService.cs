@@ -11,8 +11,6 @@ public class MidiPlayerService(
     INoteProcessor noteProcessor,
     IFileDownloader fileDownloader) : IMidiPlayerService
 {
-    private const double PREVIEW_TIME_MS = 2500; // 音符提前2.5秒显示
-
     public async Task PlayMidiFileAsync(string fileUrl)
     {
         IMidiDeviceWrapper? midiDevice = null;
@@ -86,34 +84,6 @@ public class MidiPlayerService(
 
         var playbackStart = stopwatch.Elapsed;
 
-        // 预先发送音符预告
-        _ = Task.Run(async () =>
-        {
-            foreach (var midiEntry in allEvents)
-            {
-                if (midiEntry.Event.CommandCode == MidiCommandCode.NoteOn)
-                {
-                    var noteEvent = (NoteEvent)midiEntry.Event;
-                    if (noteEvent.Velocity > 0)
-                    {
-                        var eventTime = tempoManager.TicksToTimeSpan(midiEntry.AbsoluteTime, tempoMap, ticksPerQuarterNote);
-                        var delayMs = eventTime.TotalMilliseconds;
-
-                        // 等待到预告时间
-                        var previewDelay = delayMs - PREVIEW_TIME_MS;
-                        if (previewDelay > 0)
-                        {
-                            await Task.Delay(TimeSpan.FromMilliseconds(previewDelay));
-                        }
-
-                        // 发送预告，告诉前端这个音符将在 PREVIEW_TIME_MS 毫秒后播放
-                        noteProcessor.SendNotePreview(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel, PREVIEW_TIME_MS);
-                    }
-                }
-            }
-        });
-
-        // 正常播放事件
         foreach (var midiEntry in allEvents)
         {
             var expectedTime = playbackStart.Add(tempoManager.TicksToTimeSpan(midiEntry.AbsoluteTime, tempoMap, ticksPerQuarterNote));

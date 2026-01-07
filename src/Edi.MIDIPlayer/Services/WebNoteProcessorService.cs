@@ -29,17 +29,6 @@ public class WebNoteProcessorService(IHubContext<MidiPlayerHub> hubContext, ICon
         };
     }
 
-    public void SendNotePreview(int noteNumber, int velocity, int channel, double delayMs)
-    {
-        var noteName = GetNoteName(noteNumber);
-        _ = hubContext.Clients.All.SendAsync("ReceiveNotePreview",
-            noteNumber,
-            velocity,
-            channel,
-            noteName,
-            delayMs);
-    }
-
     public void DisplayNoteOn(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
         var noteName = GetNoteName(noteEvent.NoteNumber);

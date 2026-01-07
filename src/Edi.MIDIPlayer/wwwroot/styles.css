@@ -105,33 +105,22 @@ body {
 
 .visualization-area {
     position: relative;
-    height: 600px;
+    height: 300px;
     margin-bottom: 30px;
     border-radius: 20px;
     overflow: hidden;
     background: rgba(0, 0, 0, 0.3);
     border: 2px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-}
-
-#waterfallCanvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
 }
 
 #piano-container {
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
     display: flex;
     gap: 1px;
-    padding: 20px;
-    z-index: 2;
 }
 
 .piano-key {
@@ -161,7 +150,7 @@ body {
 
 .piano-key.active {
     transform: scale(0.95);
-    box-shadow: 0 0 30px currentColor, inset 0 0 20px currentColor;
+    transition: all 0.05s ease;
 }
 
 .piano-key.white.active {
