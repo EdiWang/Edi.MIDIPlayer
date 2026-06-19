@@ -17,7 +17,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 - **Build tool**: .NET SDK / MSBuild.
 - **Package management**: NuGet via `Edi.MIDIPlayer.csproj`; no lock file is currently present.
 - **Database/cache/message queue**: none found.
-- **Testing framework**: Preferred framework is xUnit v3 with Moq. No dedicated test project is currently present; CI still runs `dotnet test`.
+- **Testing framework**: xUnit v3 with Moq. The dedicated test project is `src/Edi.MIDIPlayer.Tests`; CI runs `dotnet test`.
 - **Formatting/lint/type checking**: To be confirmed. No `.editorconfig`, explicit analyzer configuration, or formatter configuration was found.
 - **Deployment and packaging**:
   - GitHub Actions workflow `.github/workflows/dotnet.yml` builds, tests, packs, and pushes the NuGet package on pushes to `master`.
@@ -42,16 +42,21 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 |   `-- workflows/dotnet.yml
 `-- src/
     |-- Edi.MIDIPlayer.slnx
-    `-- Edi.MIDIPlayer/
-        |-- Edi.MIDIPlayer.csproj
-        |-- AppOptions.cs
-        |-- Program.cs
-        |-- Hubs/
-        |-- Interfaces/
-        |-- Models/
-        |-- Services/
-        |-- Properties/PublishProfiles/
-        `-- wwwroot/
+    |-- Edi.MIDIPlayer/
+    |   |-- Edi.MIDIPlayer.csproj
+    |   |-- AppOptions.cs
+    |   |-- Program.cs
+    |   |-- Hubs/
+    |   |-- Interfaces/
+    |   |-- Models/
+    |   |-- Services/
+    |   |-- Properties/PublishProfiles/
+    |   `-- wwwroot/
+    `-- Edi.MIDIPlayer.Tests/
+        |-- Edi.MIDIPlayer.Tests.csproj
+        |-- AppOptionsTests.cs
+        |-- FileDownloaderServiceTests.cs
+        `-- TempoManagerServiceTests.cs
 ```
 
 ### Key Entry Points
@@ -67,6 +72,9 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 
 - `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`
   - Defines package metadata, target framework, tool packaging, and NuGet dependencies.
+
+- `src/Edi.MIDIPlayer.Tests/Edi.MIDIPlayer.Tests.csproj`
+  - Defines focused xUnit v3 + Moq characterization tests.
 
 - `.github/workflows/dotnet.yml`
   - Defines the Release build, test, pack, and NuGet push workflow.
@@ -168,7 +176,8 @@ dotnet tool install -g Edi.MIDIPlayer --add-source .\nupkg
 
 ## Testing and Validation Notes
 
-- The repository currently has no dedicated unit or integration test project.
+- The repository has a dedicated xUnit v3 + Moq test project at `src/Edi.MIDIPlayer.Tests`.
+- Existing tests cover `AppOptions` parsing, remote download size/timeout behavior, and tempo conversion.
 - `dotnet test --configuration Release` should remain green because the CI workflow depends on it.
 - For playback changes, validate at least:
   - local `.mid` playback,
@@ -253,7 +262,6 @@ If requirements are unclear and cannot be safely inferred from the codebase, ask
 
 ## To Be Confirmed
 
-- Preferred test project layout.
 - Whether a repository-wide formatter, `.editorconfig`, or analyzer policy should be added.
 - Whether the browser SignalR JavaScript version should track the .NET server package version.
 - Whether `src/wwwroot/app.js` is intentionally empty or a leftover file.

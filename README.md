@@ -89,6 +89,6 @@ dotnet build --configuration Release
 dotnet test --configuration Release
 ```
 
-Testing note: no dedicated test project is currently present. `dotnet test` is still the CI validation command and should continue to pass.
+Testing note: the solution includes `Edi.MIDIPlayer.Tests`, an xUnit v3 test project with Moq for focused characterization tests. `dotnet test` is the CI validation command and should continue to pass.
 
 Packaging note: the project is packable as a .NET global tool. CI uses the explicit `dotnet pack --configuration Release -o nupkg` step; regular builds do not generate a package automatically.

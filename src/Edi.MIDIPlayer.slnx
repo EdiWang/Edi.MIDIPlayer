@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="Edi.MIDIPlayer/Edi.MIDIPlayer.csproj" />
+  <Project Path="Edi.MIDIPlayer.Tests/Edi.MIDIPlayer.Tests.csproj" />
 </Solution>

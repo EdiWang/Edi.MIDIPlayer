@@ -6,7 +6,7 @@
 
 ## Scope
 
-This file is the current improvement baseline after Tasks 1, 2, 3, 4, and 9 were completed. It replaces the original long-form review plan as the active planning document.
+This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, and A were completed. It replaces the original long-form review plan as the active planning document.
 
 Reviewed scope remains:
 
@@ -17,6 +17,8 @@ Reviewed scope remains:
 - `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`
 - `src/Edi.MIDIPlayer/Program.cs`
 - `src/Edi.MIDIPlayer/AppOptions.cs`
+- `src/Edi.MIDIPlayer/Properties/AssemblyInfo.cs`
+- `src/Edi.MIDIPlayer.Tests/`
 - `src/Edi.MIDIPlayer/Hubs/`
 - `src/Edi.MIDIPlayer/Interfaces/`
 - `src/Edi.MIDIPlayer/Models/`
@@ -36,17 +38,19 @@ The following original tasks are complete and removed from the active task list:
 | Task 3: Harden remote download behavior | Completed | Remote URLs must end in `.mid` / `.midi`; downloads are streamed and must be smaller than 10 MB; timeout handling improved. |
 | Task 4: Align web URL binding and browser launch | Completed | `--urls` is captured by `AppOptions` and used for web binding/browser launch. |
 | Task 9: Extract small, stable `Program` responsibilities | Completed | `DisplayMode` and `AppOptions` moved to `src/Edi.MIDIPlayer/AppOptions.cs`. |
+| Task A: Add focused characterization tests | Completed | Added `Edi.MIDIPlayer.Tests` with xUnit v3 + Moq coverage for CLI parsing, remote download limits/timeouts, and tempo conversion. |
 
 Detailed execution records:
 
 - `docs/task-harden-remote-download.md`
 - `docs/task-align-web-urls.md`
 - `docs/task-extract-program-responsibilities.md`
+- `docs/task-add-characterization-tests.md`
 
 ## Current Overall Conclusion
 
 - Overall risk level: medium-low.
-- The most valuable next step is to add focused characterization tests, because several behavior changes and a small refactor are now in place without automated coverage.
+- The most valuable next step is to remove browser log HTML injection risk, because it is a small, isolated security improvement with clear verification.
 - The highest remaining product/code risks are:
   - Browser log rendering still uses `innerHTML`.
   - Web SignalR notifications are still fire-and-forget.
@@ -84,34 +88,6 @@ Confirmed by the user on 2026-06-19:
 | R16 | P3 | Readability/Configuration | Multiple files | Some operational values remain hard-coded. | Behavior changes still require code edits. | Startup delays, MIDI device ID, download timeout, browser log limit, and similar values are scattered. | Centralize only user-visible or likely-to-change values; avoid over-configuring internals. |
 
 ## Remaining Improvement Plan
-
-### Task A: Add Focused Characterization Tests
-
-- Previous task: Task 10.
-- Priority: P2.
-- Related issues: R5, R6, R7, R9, R11, R12, R13, R14; regression coverage for completed Tasks 1, 3, 4, and 9.
-- Goal: Establish automated coverage before more behavior changes.
-- Change scope:
-  - Add a dedicated xUnit v3 test project with Moq.
-  - Cover pure logic first:
-    - `AppOptions.Parse` display modes, `--urls`, host arguments, MIDI args, help, and invalid values.
-    - remote URL validation and download limit behavior using mocked/fake `HttpMessageHandler` or focused seams.
-    - tempo conversion behavior for stable sample inputs.
-  - Add thin tests around display-independent active-note logic only if a seam is introduced during Task D.
-- Not included:
-  - Hardware MIDI output tests in CI.
-  - Browser end-to-end automation.
-  - Large refactors just for testing.
-- Expected result:
-  - `dotnet test --configuration Release` runs meaningful tests.
-  - Future tasks can change behavior with less risk.
-- Verification:
-  - `dotnet test --configuration Release` from `src/`.
-  - `dotnet build --configuration Release`.
-- Release risk: low.
-- Rollback plan:
-  - Remove the test project if it unexpectedly blocks CI.
-- Needs user confirmation: no.
 
 ### Task B: Remove Browser Log HTML Injection Risk
 
@@ -283,25 +259,23 @@ Confirmed by the user on 2026-06-19:
 
 ## Recommended Execution Order
 
-1. Task A: Add focused characterization tests.
-2. Task B: Remove browser log HTML injection risk.
-3. Task C: Make console exit pause opt-in.
-4. Task D: Correct active note tracking semantics.
-5. Task E: Make web notifications observable.
-6. Task F: Resolve frontend and dependency loose ends.
-7. Task G: Clean up shared display helpers and interfaces.
-8. Task H: Revisit tempo conversion performance only if evidence appears.
+1. Task B: Remove browser log HTML injection risk.
+2. Task C: Make console exit pause opt-in.
+3. Task D: Correct active note tracking semantics.
+4. Task E: Make web notifications observable.
+5. Task F: Resolve frontend and dependency loose ends.
+6. Task G: Clean up shared display helpers and interfaces.
+7. Task H: Revisit tempo conversion performance only if evidence appears.
 
 ## Next Recommended Task
 
-Start with **Task A: Add Focused Characterization Tests**.
+Start with **Task B: Remove Browser Log HTML Injection Risk**.
 
 Reasoning:
 
-- Completed Tasks 1, 3, 4, and 9 changed important behavior without automated tests.
-- `AppOptions` is now isolated, so CLI parsing is cheap to test.
-- Download limits and URL validation can be protected without hardware MIDI.
-- Tests will reduce risk for the next behavior changes: console pause, active note tracking, and web notification handling.
+- Task A now protects CLI parsing, download limits/timeouts, and tempo conversion with 25 passing tests.
+- Task B is a small, isolated security fix in `wwwroot/app.js`.
+- It should be easy to verify with tests/build plus a web visualizer smoke test using HTML-like log text.
 
 ## Temporarily Not Recommended
 
