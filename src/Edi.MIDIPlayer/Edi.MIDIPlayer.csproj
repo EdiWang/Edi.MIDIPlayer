@@ -6,8 +6,8 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<IsPackable>true</IsPackable>
 		<PackAsTool>true</PackAsTool>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<ToolCommandName>midi-player</ToolCommandName>
 		<PackageId>Edi.MIDIPlayer</PackageId>
 		<Version>2.0.0</Version>
@@ -15,7 +15,6 @@
 		<Product>Edi.MIDIPlayer</Product>
 		<Authors>edi.wang@outlook.com</Authors>
 		<Description>A MIDI player with stunning web visualization</Description>
-		<PackageId>Edi.MIDIPlayer</PackageId>
 		<PackageTags>MIDI Player Music Visualization</PackageTags>
 		<PackageIcon>edi-logo-blue.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>

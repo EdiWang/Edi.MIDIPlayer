@@ -36,7 +36,7 @@ No build, test, lint, format, restore, package, dependency update, or runtime co
 - The current codebase is small and mostly understandable. The display-mode split through interfaces is a good fit for the project size, and the playback flow is easy to trace.
 - The highest-priority risks are:
   - MIDI device creation happens before the no-device check, so the intended graceful error path may not run.
-  - Packaging/release configuration appears inconsistent with the CI `dotnet pack` goal and the README note. This is marked as to confirm because validation was not run in this review.
+  - Packaging/release configuration was inconsistent with the CI `dotnet pack` goal and README note; this was completed by Task 2 on 2026-06-19.
   - Remote MIDI downloads read the full response into memory without a size limit.
   - Browser log rendering uses `innerHTML` with messages that can include user-provided input.
 - The best near-term direction is incremental hardening and focused tests, not a broad rewrite.
@@ -71,15 +71,25 @@ Confirmed by the user on 2026-06-19:
 - Removed the instance `IMidiDeviceWrapper.NumberOfDevices` member so future code does not need to construct the wrapper just to check availability.
 - Updated `README.md` and `AGENTS.md` to reflect the no-device behavior and current testing preference.
 - Verification:
-  - `dotnet build --configuration Release` from `src/`: passed with one known packaging warning about `IsPackable=true`, which is tracked by Task 2.
+  - `dotnet build --configuration Release` from `src/`: passed. At the time it emitted the known packaging warning about `IsPackable=true`; Task 2 later resolved the packaging configuration.
   - Manual no-device playback validation: not performed in this environment.
+
+### 2026-06-19: Task 2 Completed
+
+- Updated `Edi.MIDIPlayer.csproj` to explicitly set `IsPackable=true`.
+- Removed `GeneratePackageOnBuild` so regular builds no longer attempt to package automatically.
+- Removed the duplicate `PackageId` property.
+- Updated `README.md` and `AGENTS.md` packaging notes.
+- Verification:
+  - `dotnet pack --configuration Release -o nupkg` from `src/`: passed.
+  - Generated package: `src/nupkg/Edi.MIDIPlayer.2.0.0.nupkg`.
 
 ## Issues
 
 | ID | Priority | Type | Location | Description | Impact | Evidence | Suggested Direction |
 |---|---|---|---|---|---|---|---|
 | R1 | P1 | Stability | `src/Edi.MIDIPlayer/Services/MidiDeviceWrapper.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Completed on 2026-06-19: no-device handling now checks available devices before constructing `MidiOut`. | On machines without a MIDI output device, playback should now show the intended "No MIDI output devices available" message instead of failing during wrapper construction. | `MidiPlayerService` checks `MidiDeviceWrapper.AvailableDeviceCount == 0` before `new MidiDeviceWrapper()`; the instance `NumberOfDevices` member was removed. | Keep this path covered by a future test seam or no-device manual validation. |
-| R2 | P1 | Release/Packaging | `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`; `.github/workflows/dotnet.yml`; `README.md` | Packaging intent appears inconsistent and is marked to confirm. | Pushes to `master` may fail at package generation/publish time, blocking releases. | CI runs `dotnet pack`; README notes local validation reports packaging disabled unless `IsPackable` is enabled; the project has `PackAsTool` and `GeneratePackageOnBuild` but no explicit `IsPackable=true`; `PackageId` appears twice. | Confirm intended packability, then make the project file and README/AGENTS guidance match. |
+| R2 | P1 | Release/Packaging | `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`; `.github/workflows/dotnet.yml`; `README.md` | Completed on 2026-06-19: packaging metadata now explicitly enables packing and removes build-time auto-pack behavior. | CI can rely on the explicit `dotnet pack` step instead of ordinary build auto-pack. | `Edi.MIDIPlayer.csproj` now has `IsPackable=true`, keeps `PackAsTool=true`, removes `GeneratePackageOnBuild`, and has a single `PackageId`; `dotnet pack --configuration Release -o nupkg` passed. | Keep generated `.nupkg` files out of source control. |
 | R3 | P2 | Stability/Security | `src/Edi.MIDIPlayer/Services/FileDownloaderService.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Remote downloads have no maximum size and read the whole response into memory. | A very large or streaming response can cause excessive memory use or a poor CLI experience. If remote URLs are considered untrusted input, this also increases abuse risk. | `FileDownloaderService.DownloadAsync` calls `GetAsync` and then `ReadAsByteArrayAsync`; `MidiPlayerService` accepts any HTTP/HTTPS URL. | Add a conservative maximum download size and stream with early cancellation. Consider extension/content-type checks only if they match product expectations. |
 | R4 | P2 | Configuration/Usability | `src/Edi.MIDIPlayer/Program.cs`; `AGENTS.md` | Recognized host options can be misleading because web mode still runs and opens a hard-coded URL. | Users may pass `--urls` or host options expecting them to affect binding/browser launch, but `RunWebAsync` uses `http://localhost:5000`. | Parser recognizes `--urls`; `RunWebAsync` sets `var url = "http://localhost:5000"` and calls `app.RunAsync(url)`; browser launch uses the same constant. | Either honor configured URLs consistently or remove/limit the documented host option support. |
 | R5 | P2 | Stability/Maintainability | `src/Edi.MIDIPlayer/Program.cs`; `src/Edi.MIDIPlayer/Services/WebDisplayService.cs`; `src/Edi.MIDIPlayer/Services/WebNoteProcessorService.cs` | Web playback and SignalR notifications are fire-and-forget. | Exceptions can be unobserved or silently ignored; high event volume has no backpressure; message ordering is harder to reason about. | `Program.RunWebAsync` starts playback with `_ = Task.Run(...)`; web display and note processors use `_ = hubContext.Clients.All.SendAsync(...)`. | Introduce an explicit background service or async notification path with logged failures. Keep the first pass small. |
@@ -127,6 +137,7 @@ Confirmed by the user on 2026-06-19:
 
 ### Task 2: Confirm And Fix Packaging Configuration
 
+- Status: completed on 2026-06-19.
 - Priority: P1
 - Related issues: R2
 - Goal: Make local and CI packaging behavior match the project's NuGet/global-tool intent.

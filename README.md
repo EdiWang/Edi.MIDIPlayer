@@ -84,4 +84,4 @@ dotnet test --configuration Release
 
 Testing note: no dedicated test project is currently present. `dotnet test` is still the CI validation command and should continue to pass.
 
-Packaging note: the project contains NuGet/global-tool metadata and CI includes a `dotnet pack` step, but local validation currently reports that packaging is disabled unless `IsPackable` is enabled. The intended packaging setting is to be confirmed.
+Packaging note: the project is packable as a .NET global tool. CI uses the explicit `dotnet pack --configuration Release -o nupkg` step; regular builds do not generate a package automatically.

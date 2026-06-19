@@ -22,7 +22,8 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 - **Deployment and packaging**:
   - GitHub Actions workflow `.github/workflows/dotnet.yml` builds, tests, packs, and pushes the NuGet package on pushes to `master`.
   - The NuGet package includes the root `README.md` and `img/edi-logo-blue.png`.
-  - Current local validation reports `dotnet pack` packaging is disabled unless `IsPackable` is enabled. The intended setting is to be confirmed.
+  - `Edi.MIDIPlayer.csproj` explicitly sets `IsPackable=true` and `PackAsTool=true`.
+  - Packages are produced by explicit `dotnet pack` commands; regular builds do not generate packages automatically.
   - `src/Edi.MIDIPlayer/Properties/PublishProfiles/FolderProfile.pubxml` exists for folder publishing.
 
 ## Code Architecture
@@ -141,7 +142,7 @@ dotnet run --project Edi.MIDIPlayer -- --display console "path\to\file.mid"
 dotnet run --project Edi.MIDIPlayer -- "https://example.com/file.mid"
 ```
 
-Packaging command, after the `IsPackable` setting is confirmed:
+Packaging command:
 
 ```powershell
 dotnet pack --configuration Release -o nupkg
@@ -248,7 +249,6 @@ If requirements are unclear and cannot be safely inferred from the codebase, ask
 
 - Preferred test project layout.
 - Whether a repository-wide formatter, `.editorconfig`, or analyzer policy should be added.
-- Whether `Edi.MIDIPlayer.csproj` should explicitly set `IsPackable=true` so `dotnet pack` and the CI packaging intent match.
 - Whether the browser SignalR JavaScript version should track the .NET server package version.
 - Whether `src/wwwroot/app.js` is intentionally empty or a leftover file.
 - Whether the default MIDI output device should remain fixed to device `0` or become configurable.
