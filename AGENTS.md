@@ -44,6 +44,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
     |-- Edi.MIDIPlayer.slnx
     `-- Edi.MIDIPlayer/
         |-- Edi.MIDIPlayer.csproj
+        |-- AppOptions.cs
         |-- Program.cs
         |-- Hubs/
         |-- Interfaces/
@@ -57,10 +58,12 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 
 - `src/Edi.MIDIPlayer/Program.cs`
   - Checks the OS platform.
-  - Parses command-line options.
   - Starts either the SignalR web visualizer or the console visualizer.
   - Configures dependency injection for the selected display mode.
   - Starts playback after the web host is available in web mode.
+
+- `src/Edi.MIDIPlayer/AppOptions.cs`
+  - Parses command-line display options, host options, web URLs, and MIDI file arguments.
 
 - `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`
   - Defines package metadata, target framework, tool packaging, and NuGet dependencies.
@@ -113,7 +116,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 - Keep the web and console display paths behind the existing display/note processor abstractions instead of duplicating playback logic.
 - Prefer dependency injection for services that participate in the playback pipeline.
 - Preserve Windows-only behavior unless a cross-platform MIDI output strategy is intentionally designed and documented.
-- Keep command-line parsing in `Program.AppOptions` consistent with existing aliases:
+- Keep command-line parsing in `AppOptions` consistent with existing aliases:
   - `--display`, `--mode`, `--ui`
   - `--web`, `--console`
   - display values such as `web`, `browser`, `signalr`, `console`, `terminal`, and `cli`

@@ -17,8 +17,8 @@ Execute Task 4 from `docs/ai-review-plan.md`: make `--urls` an officially suppor
 | 1 | Record task context and inspect current parsing/startup flow | None | Read `Program.cs` and docs | Done |
 | 2 | Capture `--urls` value in `AppOptions` | Task 1 | Build | Done |
 | 3 | Use configured URLs for web binding and browser launch | Task 2 | Build | Done |
-| 4 | Update README, AGENTS, and AI review plan | Task 3 | Documentation review | In progress |
-| 5 | Run build validation and restart player test instance | Tasks 2-4 | `dotnet build --configuration Release`; local player launch | Not started |
+| 4 | Update README, AGENTS, and AI review plan | Task 3 | Documentation review | Done |
+| 5 | Run build validation and restart player test instance | Tasks 2-4 | `dotnet build --configuration Release`; local player launch | Done |
 
 ## Execution Order
 
@@ -30,8 +30,8 @@ Execute Task 4 from `docs/ai-review-plan.md`: make `--urls` an officially suppor
 
 ## Current Progress
 
-- Status: In progress
-- Current step: Updating documentation and running verification.
+- Status: Completed
+- Current step: Done.
 - Last updated: 2026-06-19
 
 ## Verification Log
@@ -40,6 +40,7 @@ Execute Task 4 from `docs/ai-review-plan.md`: make `--urls` an officially suppor
 |---|---|---|---|
 | 2026-06-19 | Initial code review | Done | `--urls` is recognized but `RunWebAsync` hard-codes `http://localhost:5000`. |
 | 2026-06-19 | Code change | Done | `AppOptions` captures `--urls`; web mode uses host configuration for binding and opens the browser at the first configured URL. |
+| 2026-06-19 | `dotnet build --configuration Release` from `src/` | Passed | 0 warnings, 0 errors. |
 
 ## Issues and Resolutions
 

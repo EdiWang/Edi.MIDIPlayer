@@ -94,7 +94,7 @@ Confirmed by the user on 2026-06-19:
 - Verification:
   - `dotnet build --configuration Release` from `src/`: passed with 0 warnings and 0 errors.
 
-### 2026-06-19: Task 4 In Progress
+### 2026-06-19: Task 4 Completed
 
 - Added a task record at `docs/task-align-web-urls.md`.
 - Updated `AppOptions` to capture the configured `--urls` value.
@@ -102,7 +102,16 @@ Confirmed by the user on 2026-06-19:
 - Updated browser launch to open the first configured URL and convert wildcard hosts (`*`, `+`, `0.0.0.0`, `::`) to `localhost`.
 - Updated `README.md` and `AGENTS.md` with `--urls` behavior.
 - Verification:
-  - `dotnet build --configuration Release` from `src/`: pending.
+  - `dotnet build --configuration Release` from `src/`: passed with 0 warnings and 0 errors.
+
+### 2026-06-19: Task 9 Completed
+
+- Added a task record at `docs/task-extract-program-responsibilities.md`.
+- Moved `DisplayMode` and `AppOptions` parsing from nested `Program` types into `src/Edi.MIDIPlayer/AppOptions.cs`.
+- Left DI registration in `Program.cs` for now to keep the refactor narrow.
+- Updated `README.md` and `AGENTS.md` to document the new command-line options source file.
+- Verification:
+  - `dotnet build --configuration Release` from `src/`: passed with 0 warnings and 0 errors.
 
 ## Issues
 
@@ -111,13 +120,13 @@ Confirmed by the user on 2026-06-19:
 | R1 | P1 | Stability | `src/Edi.MIDIPlayer/Services/MidiDeviceWrapper.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Completed on 2026-06-19: no-device handling now checks available devices before constructing `MidiOut`. | On machines without a MIDI output device, playback should now show the intended "No MIDI output devices available" message instead of failing during wrapper construction. | `MidiPlayerService` checks `MidiDeviceWrapper.AvailableDeviceCount == 0` before `new MidiDeviceWrapper()`; the instance `NumberOfDevices` member was removed. | Keep this path covered by a future test seam or no-device manual validation. |
 | R2 | P1 | Release/Packaging | `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`; `.github/workflows/dotnet.yml`; `README.md` | Completed on 2026-06-19: packaging metadata now explicitly enables packing and removes build-time auto-pack behavior. | CI can rely on the explicit `dotnet pack` step instead of ordinary build auto-pack. | `Edi.MIDIPlayer.csproj` now has `IsPackable=true`, keeps `PackAsTool=true`, removes `GeneratePackageOnBuild`, and has a single `PackageId`; `dotnet pack --configuration Release -o nupkg` passed. | Keep generated `.nupkg` files out of source control. |
 | R3 | P2 | Stability/Security | `src/Edi.MIDIPlayer/Services/FileDownloaderService.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Completed on 2026-06-19: remote downloads now stream responses, reject files at or above 10 MB, and require `.mid` / `.midi` URLs. | Very large or non-MIDI-looking remote URLs should be rejected before consuming excessive memory. | `FileDownloaderService.DownloadAsync` uses `HttpCompletionOption.ResponseHeadersRead` and enforces `MaxDownloadBytes`; `MidiPlayerService` checks remote URL extensions before downloading; build passed. | Add focused tests in Task 10. |
-| R4 | P2 | Configuration/Usability | `src/Edi.MIDIPlayer/Program.cs`; `AGENTS.md` | In progress on 2026-06-19: `--urls` is captured and used for web binding and browser launch. | Users passing `--urls` should get matching server binding and browser startup behavior. | `AppOptions` captures `WebUrls`; `RunWebAsync` uses host-configured URLs when present and opens the first configured URL in the browser. | Build validation pending; add parser tests in Task 10. |
+| R4 | P2 | Configuration/Usability | `src/Edi.MIDIPlayer/Program.cs`; `AGENTS.md` | Completed on 2026-06-19: `--urls` is captured and used for web binding and browser launch. | Users passing `--urls` should get matching server binding and browser startup behavior. | `AppOptions` captures `WebUrls`; `RunWebAsync` uses host-configured URLs when present and opens the first configured URL in the browser; build passed. | Add parser tests in Task 10. |
 | R5 | P2 | Stability/Maintainability | `src/Edi.MIDIPlayer/Program.cs`; `src/Edi.MIDIPlayer/Services/WebDisplayService.cs`; `src/Edi.MIDIPlayer/Services/WebNoteProcessorService.cs` | Web playback and SignalR notifications are fire-and-forget. | Exceptions can be unobserved or silently ignored; high event volume has no backpressure; message ordering is harder to reason about. | `Program.RunWebAsync` starts playback with `_ = Task.Run(...)`; web display and note processors use `_ = hubContext.Clients.All.SendAsync(...)`. | Introduce an explicit background service or async notification path with logged failures. Keep the first pass small. |
 | R6 | P2 | Security | `src/Edi.MIDIPlayer/wwwroot/app.js`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Browser event log uses `innerHTML` for messages that can include user-provided strings. | Local self-XSS is possible if a MIDI URL/path or error message contains HTML. Risk is lower if the browser is only controlled by the local user, but this is still easy to harden. | `addLogEntry` interpolates `timestamp`, `type`, and `message` into `entry.innerHTML`; server messages include strings such as `Downloading MIDI file from: {fileUrl}` and exception messages. | Build log rows with DOM nodes and `textContent` instead of `innerHTML`. |
 | R7 | P2 | Correctness | `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs`; `src/Edi.MIDIPlayer/wwwroot/app.js` | Active note tracking is keyed only by MIDI note number. | The active note count and key highlighting can be wrong for the same note on multiple channels or overlapping note-on events. | `MidiPlayerService` uses `HashSet<int>` and adds/removes `noteEvent.NoteNumber`; browser `app.js` also uses `Set` of note numbers. | Track active notes by channel plus note number, and decide whether overlapping same-channel notes need reference counting. |
 | R8 | P2 | Error Handling | `src/Edi.MIDIPlayer/Services/FileDownloaderService.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Download timeout handling is inconsistent. | Timeout errors may be shown as generic execution failures instead of the more specific timeout message. | `FileDownloaderService` throws `TimeoutException`; `MidiPlayerService` only has a specific catch for `TaskCanceledException` with `TimeoutException` inner exception, then falls through to generic `catch (Exception)`. | Catch `TimeoutException` explicitly or avoid converting the cancellation exception. |
 | R9 | P2 | CLI Usability | `src/Edi.MIDIPlayer/Program.cs` | Console mode always clears the terminal and waits for a key before exit. | This makes scripted usage awkward and can hang in non-interactive environments. | `RunConsoleAsync` calls `Console.Clear()` and in `finally` writes "Press any key to exit..." then calls `Console.ReadKey()`. | Gate interactive behavior behind `Environment.UserInteractive` or an explicit option, and preserve the current behavior only when appropriate. |
-| R10 | P2 | Code Structure | `src/Edi.MIDIPlayer/Program.cs` | `Program.cs` owns OS checks, CLI parsing, DI registration, browser launch, web startup, console startup, and playback scheduling. | The file is still manageable, but future changes to CLI or hosting behavior are likely to collide in one place. | `Program.cs` contains `AppOptions`, display mode parsing, host registration, `RunWebAsync`, `RunConsoleAsync`, and playback kickoff logic. | Extract only the stable seams: option parsing and service registration. Avoid broad architecture changes. |
+| R10 | P2 | Code Structure | `src/Edi.MIDIPlayer/Program.cs`; `src/Edi.MIDIPlayer/AppOptions.cs` | Completed on 2026-06-19: command-line parsing moved out of `Program.cs`; startup and DI registration remain in `Program.cs`. | Future CLI parsing changes are more localized and easier to test. | `AppOptions.cs` now contains `DisplayMode`, `AppOptions`, and parser helpers; `Program.cs` calls `AppOptions.Parse`; build passed. | Add parser tests in Task 10. |
 | R11 | P3 | Maintainability | `src/Edi.MIDIPlayer/Services/NoteProcessorService.cs`; `src/Edi.MIDIPlayer/Services/WebNoteProcessorService.cs` | Note-name and controller-name logic is duplicated. | Small updates can drift between console and web display paths. | Both classes define `NoteNames`, `GetNoteName`, `GetNoteColor`, and `GetControllerName`. | Move shared MIDI display formatting helpers into a small internal static helper or service. |
 | R12 | P3 | Architecture | `src/Edi.MIDIPlayer/Interfaces/IConsoleDisplay.cs`; display services | `IConsoleDisplay` is used for both console and web display, but it exposes console-specific members. | Web display implements methods that do not naturally belong to it, making the abstraction less clear. | `WebDisplayService : IConsoleDisplay` returns a lock and `CreateVelocityBar` returns `velocity.ToString()`. | Split display status output from console rendering helpers, after higher-priority fixes. |
 | R13 | P3 | Frontend Maintainability | `src/Edi.MIDIPlayer/wwwroot/index.html`; `src/Edi.MIDIPlayer/wwwroot/app.js`; `src/wwwroot/app.js`; `AGENTS.md` | There are likely unused or leftover frontend artifacts. | Future maintainers may spend time looking for missing behavior or accidentally edit the wrong file. | `index.html` contains `<canvas id="waterfallCanvas"></canvas>`, but no CSS/JS reference was found except the element itself; `src/wwwroot/app.js` exists and is empty; AGENTS already lists the empty file as to confirm. | Confirm intent, then remove or implement the placeholder canvas and delete the stray empty file if unused. |
@@ -217,7 +226,7 @@ Confirmed by the user on 2026-06-19:
 
 ### Task 4: Align Web URL Binding And Browser Launch
 
-- Status: in progress on 2026-06-19.
+- Status: completed on 2026-06-19.
 - Priority: P2
 - Related issues: R4, R16
 - Goal: Make web mode behavior match documented host options and user expectations.
@@ -346,6 +355,7 @@ Confirmed by the user on 2026-06-19:
 
 ### Task 9: Extract Small, Stable Program Responsibilities
 
+- Status: completed on 2026-06-19.
 - Priority: P2
 - Related issues: R10
 - Goal: Make future host/CLI changes safer without changing behavior.

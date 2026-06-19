@@ -20,6 +20,7 @@ The main workflow is:
 The main business modules are:
 
 - **Application host**: `Program.cs` selects web or console mode, configures dependency injection, and starts playback.
+- **Command-line options**: `AppOptions.cs` parses display mode, host options, web URLs, and MIDI file arguments.
 - **Playback service**: `MidiPlayerService` loads MIDI content, orders MIDI events, applies tempo timing, sends raw MIDI messages, and coordinates display updates.
 - **Tempo management**: `TempoManagerService` converts MIDI ticks into real playback time, including tempo changes.
 - **Input and download services**: `InputHandlerService` reads the requested source, and `FileDownloaderService` retrieves remote MIDI files.
