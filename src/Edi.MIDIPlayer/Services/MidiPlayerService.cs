@@ -18,27 +18,21 @@ public class MidiPlayerService(
         {
             MidiFile midiFile;
 
-            // Check if it's a URL or local file
             if (Uri.TryCreate(fileUrl, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
             {
-                // Download MIDI file from URL
                 consoleDisplay.WriteMessage("NET", $"Downloading MIDI file from: {fileUrl}", ConsoleColor.Cyan);
-
                 var midiData = await fileDownloader.DownloadAsync(fileUrl, TimeSpan.FromSeconds(30));
                 using var midiStream = new MemoryStream(midiData);
-
                 consoleDisplay.WriteMessage("NET", $"Downloaded {midiData.Length} bytes", ConsoleColor.Green);
                 midiFile = new MidiFile(midiStream, false);
             }
             else
             {
-                // Load local file
                 midiFile = new MidiFile(fileUrl, false);
             }
 
             consoleDisplay.WriteMessage("SCAN", $"Detected {midiFile.Tracks:X2} tracks, {midiFile.DeltaTicksPerQuarterNote:X4} ticks/quarter", ConsoleColor.Gray);
 
-            // Fix: Check for available MIDI devices before creating MidiOut
             midiDevice = new MidiDeviceWrapper();
             if (midiDevice.NumberOfDevices == 0)
             {
@@ -46,7 +40,6 @@ public class MidiPlayerService(
                 return;
             }
 
-            // Simple event collection without parallel processing
             var allEvents = new List<MidiEventInfo>();
             for (int track = 0; track < midiFile.Tracks; track++)
             {
@@ -83,26 +76,19 @@ public class MidiPlayerService(
     {
         var stopwatch = Stopwatch.StartNew();
         var activeNotes = new HashSet<int>();
-
-        // Build tempo map
         var tempoMap = tempoManager.BuildTempoMap(allEvents);
 
         consoleDisplay.WriteMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
         Thread.Sleep(500);
         consoleDisplay.WriteMessage("LIVE", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
 
-        // Write a divider line
-        Console.WriteLine(new string('-', 81), ConsoleColor.DarkGray);
-
         var playbackStart = stopwatch.Elapsed;
 
         foreach (var midiEntry in allEvents)
         {
-            // Calculate the expected time for this event
             var expectedTime = playbackStart.Add(tempoManager.TicksToTimeSpan(midiEntry.AbsoluteTime, tempoMap, ticksPerQuarterNote));
             var currentTime = stopwatch.Elapsed;
 
-            // Wait until it's time to play this event
             var delayNeeded = expectedTime - currentTime;
             if (delayNeeded > TimeSpan.Zero)
             {
@@ -159,7 +145,6 @@ public class MidiPlayerService(
                 break;
         }
 
-        // Update activity indicator
         consoleDisplay.UpdateActivityIndicator();
     }
 }
