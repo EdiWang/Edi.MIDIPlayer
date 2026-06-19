@@ -1,77 +1,87 @@
-﻿# Edi.MIDIPlayer
+# Edi.MIDIPlayer
 
-A MIDI player that can visualize playback in either the default SignalR web UI or the v1 terminal UI. It displays detailed MIDI events while playing music, including note on/off events, control changes, program changes, timestamps, and visual indicators.
+Edi.MIDIPlayer is a Windows-only .NET global tool for playing Standard MIDI files through the local MIDI output device while visualizing playback events. By default it starts a local SignalR web visualizer; it can also run with the terminal visualizer used by the earlier CLI experience.
 
-> IMPORTANT NOTICE: This tool is currently **Windows-only** due to its reliance on Windows-specific MIDI subsystems.
+The project is useful for quickly previewing MIDI files, inspecting note/control/program events during playback, and demonstrating MIDI timing and visualization behavior from either local files or remote `.mid` / `.midi` URLs.
 
-## Features
+> Important: this project currently depends on Windows MIDI output APIs through NAudio and exits on non-Windows platforms.
 
-- 🎵 **Real-time MIDI playback** with live event analysis
-- 🌐 **Default web visualizer** powered by SignalR
-- 🎨 **Optional color-coded terminal output** for different MIDI event types
-- 📊 **Visual velocity bars** showing note velocity levels
-- ⏱️ **Precise timing** with millisecond-accurate timestamps
-- 🎼 **Multi-track support** with automatic event merging and ordering
-- 🎛️ **MIDI event display** including:
-  - Note On/Off events with note names and octaves
-  - Control change events
-  - Program change events
-  - Tempo changes with BPM calculation
-- 🔢 **Hexadecimal display** for technical MIDI analysis
-- 🎹 **Piano-style ASCII art** banner
+## Business Logic Overview
 
-## Requirements
+The main workflow is:
 
-- **Windows only** (uses Windows-specific MIDI subsystems)
-- **.NET 10.0** or later
-- **MIDI output device** (software or hardware synthesizer)
-- **NAudio library** (automatically installed via NuGet)
+1. Parse command-line arguments and choose a display mode.
+2. Resolve the MIDI source from the first non-option argument or prompt interactively when no file is provided.
+3. Load the MIDI file from a local path or download it from an HTTP/HTTPS URL.
+4. Read all MIDI tracks, merge events by absolute tick time, and build a tempo map from tempo meta events.
+5. Play events in real time through the default MIDI output device.
+6. Publish event details to the selected display implementation.
 
-## Installation
+The main business modules are:
 
-### As a Global Tool (Recommended)
+- **Application host**: `Program.cs` selects web or console mode, configures dependency injection, and starts playback.
+- **Playback service**: `MidiPlayerService` loads MIDI content, orders MIDI events, applies tempo timing, sends raw MIDI messages, and coordinates display updates.
+- **Tempo management**: `TempoManagerService` converts MIDI ticks into real playback time, including tempo changes.
+- **Input and download services**: `InputHandlerService` reads the requested source, and `FileDownloaderService` retrieves remote MIDI files.
+- **Display services**: `ConsoleDisplayService` and `WebDisplayService` share the same playback pipeline but render status through terminal output or SignalR messages.
+- **Note processors**: `NoteProcessorService` and `WebNoteProcessorService` translate note/control events into display-specific messages.
+- **Web visualizer**: `wwwroot/index.html`, `styles.css`, and `app.js` render the browser UI and listen for SignalR events from `/midihub`.
+
+Key concepts:
+
+- **MIDI source**: a local `.mid` / `.midi` file path or HTTP/HTTPS URL.
+- **Display mode**: `web` is the default; `console` keeps the terminal visualizer available.
+- **Tempo map**: a list of tempo changes used to convert MIDI ticks into wall-clock playback delays.
+- **Active notes**: a runtime set used for display state and diagnostics while playback is running.
+- **MIDI output device**: the first available Windows MIDI output device is used.
+
+## Run, Build, and Test
+
+Install from NuGet as a global tool:
 
 ```powershell
 dotnet tool install -g Edi.MIDIPlayer
 ```
 
-## Usage
-
-After installation, you can use the tool globally:
+Play a local MIDI file with the default web visualizer:
 
 ```powershell
 midi-player "path\to\your\file.mid"
 ```
 
-This starts the web visualizer by default.
-
-or play a MIDI file from Internet:
+Play a remote MIDI file:
 
 ```powershell
-midi-player "https://example.com/path/to/your/file.mid"
+midi-player "https://example.com/path/to/file.mid"
 ```
 
-To use the terminal UI from v1:
+Use the terminal visualizer:
 
 ```powershell
 midi-player --display console "path\to\your\file.mid"
 ```
 
-Equivalent shortcuts:
+Equivalent display shortcuts:
 
 ```powershell
-midi-player --console "path\to\your\file.mid"
-midi-player --display web "path\to\your\file.mid"
 midi-player --web "path\to\your\file.mid"
+midi-player --console "path\to\your\file.mid"
 ```
 
-Run without a MIDI file to enter interactive mode:
+Run without a MIDI argument to enter interactive input mode:
 
 ```powershell
 midi-player
 ```
 
-The program will prompt you to enter a MIDI file path.
+Build and validate from the solution directory:
 
-- `.mid` - Standard MIDI files
-- `.midi` - Standard MIDI files
+```powershell
+cd src
+dotnet build --configuration Release
+dotnet test --configuration Release
+```
+
+Testing note: no dedicated test project is currently present. `dotnet test` is still the CI validation command and should continue to pass.
+
+Packaging note: the project contains NuGet/global-tool metadata and CI includes a `dotnet pack` step, but local validation currently reports that packaging is disabled unless `IsPackable` is enabled. The intended packaging setting is to be confirmed.
