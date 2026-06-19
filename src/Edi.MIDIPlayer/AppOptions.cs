@@ -11,6 +11,7 @@ internal sealed record AppOptions(
     string[] MidiArgs,
     string[] HostArgs,
     string? WebUrls,
+    bool PauseOnExit,
     bool ShowHelp)
 {
     public static AppOptions Parse(string[] args)
@@ -19,6 +20,7 @@ internal sealed record AppOptions(
         var midiArgs = new List<string>();
         var hostArgs = new List<string>();
         string? webUrls = null;
+        var pauseOnExit = false;
         var showHelp = false;
 
         for (var i = 0; i < args.Length; i++)
@@ -60,6 +62,12 @@ internal sealed record AppOptions(
                 continue;
             }
 
+            if (arg.Equals("--pause-on-exit", StringComparison.OrdinalIgnoreCase))
+            {
+                pauseOnExit = true;
+                continue;
+            }
+
             if (IsKnownHostOptionWithValue(arg))
             {
                 var option = arg.Split('=', 2)[0];
@@ -97,7 +105,7 @@ internal sealed record AppOptions(
             }
         }
 
-        return new AppOptions(displayMode, [.. midiArgs], [.. hostArgs], webUrls, showHelp);
+        return new AppOptions(displayMode, [.. midiArgs], [.. hostArgs], webUrls, pauseOnExit, showHelp);
     }
 
     private static bool IsHelpOption(string arg) =>

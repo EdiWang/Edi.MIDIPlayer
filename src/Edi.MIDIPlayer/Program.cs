@@ -148,7 +148,10 @@ internal class Program
         try
         {
             Console.OutputEncoding = Encoding.UTF8;
-            Console.Clear();
+            if (CanClearConsole())
+            {
+                Console.Clear();
+            }
 
             await PlayRequestedMidiFileAsync(serviceProvider, options.MidiArgs, validateLocalPath: true);
         }
@@ -159,11 +162,20 @@ internal class Program
         }
         finally
         {
-            var consoleDisplay = serviceProvider.GetRequiredService<IConsoleDisplay>();
-            consoleDisplay.WriteMessage("SYSTEM", "Press any key to exit...", ConsoleColor.Yellow);
-            Console.ReadKey();
+            if (CanReadExitKey(options))
+            {
+                var consoleDisplay = serviceProvider.GetRequiredService<IConsoleDisplay>();
+                consoleDisplay.WriteMessage("SYSTEM", "Press any key to exit...", ConsoleColor.Yellow);
+                Console.ReadKey(intercept: true);
+            }
         }
     }
+
+    private static bool CanClearConsole() =>
+        Environment.UserInteractive && !Console.IsOutputRedirected;
+
+    private static bool CanReadExitKey(AppOptions options) =>
+        options.PauseOnExit && Environment.UserInteractive && !Console.IsInputRedirected;
 
     private static IHostBuilder CreateConsoleHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
@@ -217,13 +229,16 @@ internal class Program
     {
         Console.WriteLine("""
             Usage:
-              midi-player [--display web|console] [--urls http://localhost:5000] <midi-file-or-url>
+              midi-player [--display web|console] [--pause-on-exit] [--urls http://localhost:5000] <midi-file-or-url>
               midi-player --web <midi-file-or-url>
-              midi-player --console <midi-file-or-url>
+              midi-player --console [--pause-on-exit] <midi-file-or-url>
 
             Display modes:
               web      Start the SignalR web visualizer. This is the default.
               console  Use the terminal visualizer from v1.
+
+            Console options:
+              --pause-on-exit  Wait for a key before exiting console mode.
             """);
     }
 

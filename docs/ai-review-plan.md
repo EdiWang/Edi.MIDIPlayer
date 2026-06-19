@@ -6,7 +6,7 @@
 
 ## Scope
 
-This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, and B were completed. It replaces the original long-form review plan as the active planning document.
+This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, B, and C were completed. It replaces the original long-form review plan as the active planning document.
 
 Reviewed scope remains:
 
@@ -40,6 +40,7 @@ The following original tasks are complete and removed from the active task list:
 | Task 9: Extract small, stable `Program` responsibilities | Completed | `DisplayMode` and `AppOptions` moved to `src/Edi.MIDIPlayer/AppOptions.cs`. |
 | Task A: Add focused characterization tests | Completed | Added `Edi.MIDIPlayer.Tests` with xUnit v3 + Moq coverage for CLI parsing, remote download limits/timeouts, and tempo conversion. |
 | Task B: Remove browser log HTML injection risk | Completed | Browser event log entries now use DOM nodes with `textContent` instead of `innerHTML`. |
+| Task C: Make console exit pause opt-in | Completed | Console mode no longer waits for a key by default; `--pause-on-exit` preserves the old pause behavior. |
 
 Detailed execution records:
 
@@ -48,15 +49,15 @@ Detailed execution records:
 - `docs/task-extract-program-responsibilities.md`
 - `docs/task-add-characterization-tests.md`
 - `docs/task-remove-browser-log-html-injection.md`
+- `docs/task-console-exit-pause-opt-in.md`
 
 ## Current Overall Conclusion
 
 - Overall risk level: medium-low.
-- The most valuable next step is to make console exit pause opt-in, because it is a user-visible CLI behavior fix with focused parser coverage already in place.
+- The most valuable next step is to correct active note tracking semantics, because the remaining issue is user-visible and affects both console and web display correctness.
 - The highest remaining product/code risks are:
   - Web SignalR notifications are still fire-and-forget.
   - Active note state still does not distinguish MIDI channels.
-  - Console mode still pauses on exit by default.
 - Broad architecture rewrites, frontend framework adoption, and cross-platform MIDI output are still not recommended.
 
 ## User Confirmations
@@ -79,7 +80,6 @@ Confirmed by the user on 2026-06-19:
 |---|---|---|---|---|---|---|---|
 | R5 | P2 | Stability/Maintainability | `Program.cs`, `WebDisplayService.cs`, `WebNoteProcessorService.cs` | Web playback startup and SignalR notifications are fire-and-forget. | Exceptions can be unobserved or silently ignored; event ordering/backpressure is harder to reason about. | `Program.RunWebAsync` uses `_ = Task.Run(...)`; web display/note processors use `_ = hubContext.Clients.All.SendAsync(...)`. | Add observable failure handling with the smallest interface changes possible. |
 | R7 | P2 | Correctness | `MidiPlayerService.cs`, `wwwroot/app.js` | Active notes are keyed only by MIDI note number. | Same pitch on different channels or overlapping note-on events can display incorrect active counts/highlighting. | Server uses `HashSet<int>`; browser uses `Set` of note numbers. | Track active state by channel plus note; consider reference counts for overlapping same-channel notes. |
-| R9 | P2 | CLI Usability | `Program.cs`, `AppOptions.cs` | Console mode always clears the terminal and waits for a key before exit. | Scripts and non-interactive usage can hang or lose terminal output. | `RunConsoleAsync` calls `Console.Clear()` and always calls `Console.ReadKey()` in `finally`. | Add an opt-in pause flag and avoid clearing/pausing in non-interactive flows. |
 | R11 | P3 | Maintainability | `NoteProcessorService.cs`, `WebNoteProcessorService.cs` | Note-name and controller-name logic is duplicated. | Display formatting changes can drift between console and web paths. | Both classes define note-name and controller-name helpers. | Move shared MIDI display formatting into a small internal helper. |
 | R12 | P3 | Architecture | `IConsoleDisplay.cs`, display services | `IConsoleDisplay` is used for both console and web but exposes console-specific members. | Web display implements methods that do not naturally belong to it. | `WebDisplayService` returns a lock and uses a stub-like `CreateVelocityBar`. | Split status output from console rendering helpers after tests are in place. |
 | R13 | P3 | Frontend Maintainability | `wwwroot/index.html`, `src/wwwroot/app.js` | Unused frontend artifacts remain. | Maintainers can edit the wrong file or expect unimplemented behavior. | `waterfallCanvas` has no future purpose; `src/wwwroot/app.js` is empty and should be deleted if still unused. | Remove confirmed unused artifacts and update docs. |
@@ -88,31 +88,6 @@ Confirmed by the user on 2026-06-19:
 | R16 | P3 | Readability/Configuration | Multiple files | Some operational values remain hard-coded. | Behavior changes still require code edits. | Startup delays, MIDI device ID, download timeout, browser log limit, and similar values are scattered. | Centralize only user-visible or likely-to-change values; avoid over-configuring internals. |
 
 ## Remaining Improvement Plan
-
-### Task C: Make Console Exit Pause Opt-In
-
-- Previous task: Task 8.
-- Priority: P2.
-- Related issues: R9.
-- Goal: Avoid blocking scripted/non-interactive console use by default.
-- Change scope:
-  - `AppOptions.cs`
-  - `Program.RunConsoleAsync`
-  - README/AGENTS usage docs.
-- Not included:
-  - Console visualizer redesign.
-  - Removing interactive MIDI path prompt.
-- Expected result:
-  - Console mode does not pause by default.
-  - A clear opt-in option, such as `--pause-on-exit`, preserves the old pause behavior when requested.
-  - Terminal clearing is reviewed and either kept only for interactive usage or made opt-in if needed.
-- Verification:
-  - Parser tests from Task A.
-  - `dotnet run --project Edi.MIDIPlayer -- --display console ...` with and without pause option.
-- Release risk: low to medium.
-- Rollback plan:
-  - Restore unconditional pause if users depend on it.
-- Needs user confirmation: no; opt-in behavior was already confirmed.
 
 ### Task D: Correct Active Note Tracking Semantics
 
@@ -236,22 +211,22 @@ Confirmed by the user on 2026-06-19:
 
 ## Recommended Execution Order
 
-1. Task C: Make console exit pause opt-in.
-2. Task D: Correct active note tracking semantics.
-3. Task E: Make web notifications observable.
-4. Task F: Resolve frontend and dependency loose ends.
-5. Task G: Clean up shared display helpers and interfaces.
-6. Task H: Revisit tempo conversion performance only if evidence appears.
+1. Task D: Correct active note tracking semantics.
+2. Task E: Make web notifications observable.
+3. Task F: Resolve frontend and dependency loose ends.
+4. Task G: Clean up shared display helpers and interfaces.
+5. Task H: Revisit tempo conversion performance only if evidence appears.
 
 ## Next Recommended Task
 
-Start with **Task C: Make Console Exit Pause Opt-In**.
+Start with **Task D: Correct Active Note Tracking Semantics**.
 
 Reasoning:
 
 - Task A now protects CLI parsing, download limits/timeouts, and tempo conversion with 25 passing tests.
 - Task B removed the browser log `innerHTML` path.
-- Task C is now the next low-risk, user-visible behavior fix and can extend the existing `AppOptions` tests.
+- Task C made console exit pause opt-in and added parser coverage for the new flag.
+- Task D is the next user-visible correctness fix and should stay independent from web notification observability work.
 
 ## Temporarily Not Recommended
 

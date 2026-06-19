@@ -68,6 +68,12 @@ Use the terminal visualizer:
 midi-player --display console "path\to\your\file.mid"
 ```
 
+Pause before exiting console mode:
+
+```powershell
+midi-player --display console --pause-on-exit "path\to\your\file.mid"
+```
+
 Equivalent display shortcuts:
 
 ```powershell

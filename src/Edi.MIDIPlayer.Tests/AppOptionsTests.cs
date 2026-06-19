@@ -13,6 +13,7 @@ public class AppOptionsTests
         Assert.Equal(["song.mid"], options.MidiArgs);
         Assert.Equal(["song.mid"], options.HostArgs);
         Assert.Null(options.WebUrls);
+        Assert.False(options.PauseOnExit);
         Assert.False(options.ShowHelp);
     }
 
@@ -67,6 +68,16 @@ public class AppOptionsTests
 
         Assert.Equal(["song.mid"], options.MidiArgs);
         Assert.Equal(["--environment", "Development", "song.mid"], options.HostArgs);
+    }
+
+    [Fact]
+    public void Parse_CapturesPauseOnExitWithoutForwardingItToHostOrMidiArgs()
+    {
+        var options = AppOptions.Parse(["--display", "console", "--pause-on-exit", "song.mid"]);
+
+        Assert.True(options.PauseOnExit);
+        Assert.Equal(["song.mid"], options.MidiArgs);
+        Assert.Equal(["song.mid"], options.HostArgs);
     }
 
     [Theory]

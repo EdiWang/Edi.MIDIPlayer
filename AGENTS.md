@@ -127,12 +127,15 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 - Keep command-line parsing in `AppOptions` consistent with existing aliases:
   - `--display`, `--mode`, `--ui`
   - `--web`, `--console`
+  - `--pause-on-exit`
   - display values such as `web`, `browser`, `signalr`, `console`, `terminal`, and `cli`
 - Host options currently recognized by the parser include `--urls`, `--environment`, `--contentRoot`, `--webroot`, and `--applicationName`.
 - `--urls` is an officially supported web-mode option. `Program.RunWebAsync` uses it for ASP.NET Core binding and opens the browser at the first configured URL, converting wildcard hosts such as `*`, `+`, `0.0.0.0`, and `::` to `localhost` for browser launch.
 - Local file validation happens before playback unless the source is HTTP/HTTPS.
 - Remote downloads are limited to HTTP/HTTPS URLs ending in `.mid` or `.midi`, must be smaller than 10 MB, and use `HttpClient` with a configured user agent and timeouts. `MidiPlayerService` currently requests a 30-second download timeout.
 - The default web URL is `http://localhost:5000` when `--urls` is not provided.
+- Console mode does not pause before exit by default; use `--pause-on-exit` to preserve the older interactive pause behavior.
+- Console mode clears the terminal only for interactive, non-redirected output.
 - The first MIDI output device (`deviceId = 0`) is used by `MidiDeviceWrapper` after `MidiPlayerService` checks that at least one output device is available.
 - Avoid adding broad architectural abstractions unless they clearly reduce duplication or match the existing service/interface pattern.
 
@@ -151,6 +154,7 @@ Run locally from source:
 ```powershell
 dotnet run --project Edi.MIDIPlayer -- "path\to\file.mid"
 dotnet run --project Edi.MIDIPlayer -- --display console "path\to\file.mid"
+dotnet run --project Edi.MIDIPlayer -- --display console --pause-on-exit "path\to\file.mid"
 dotnet run --project Edi.MIDIPlayer -- "https://example.com/file.mid"
 ```
 
@@ -177,7 +181,7 @@ dotnet tool install -g Edi.MIDIPlayer --add-source .\nupkg
 ## Testing and Validation Notes
 
 - The repository has a dedicated xUnit v3 + Moq test project at `src/Edi.MIDIPlayer.Tests`.
-- Existing tests cover `AppOptions` parsing, remote download size/timeout behavior, and tempo conversion.
+- Existing tests cover `AppOptions` parsing, console pause option parsing, remote download size/timeout behavior, and tempo conversion.
 - `dotnet test --configuration Release` should remain green because the CI workflow depends on it.
 - For playback changes, validate at least:
   - local `.mid` playback,
