@@ -54,6 +54,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
     |   `-- wwwroot/
     `-- Edi.MIDIPlayer.Tests/
         |-- Edi.MIDIPlayer.Tests.csproj
+        |-- ActiveNoteTrackerTests.cs
         |-- AppOptionsTests.cs
         |-- FileDownloaderServiceTests.cs
         `-- TempoManagerServiceTests.cs
@@ -100,6 +101,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
   - These abstractions make the display implementations swappable while sharing playback logic.
 
 - `Models/`
+  - `ActiveNoteTracker` tracks active note state by channel plus note number and uses reference counts for overlapping same-channel notes.
   - `MidiEventInfo` wraps NAudio MIDI events with absolute time.
   - `TempoChange` represents tempo map entries.
 
@@ -133,6 +135,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 - `--urls` is an officially supported web-mode option. `Program.RunWebAsync` uses it for ASP.NET Core binding and opens the browser at the first configured URL, converting wildcard hosts such as `*`, `+`, `0.0.0.0`, and `::` to `localhost` for browser launch.
 - Local file validation happens before playback unless the source is HTTP/HTTPS.
 - Remote downloads are limited to HTTP/HTTPS URLs ending in `.mid` or `.midi`, must be smaller than 10 MB, and use `HttpClient` with a configured user agent and timeouts. `MidiPlayerService` currently requests a 30-second download timeout.
+- Active note display state is tracked by channel plus note number. Overlapping same-channel note-on events use reference counts so one note-off does not clear a still-active note.
 - The default web URL is `http://localhost:5000` when `--urls` is not provided.
 - Console mode does not pause before exit by default; use `--pause-on-exit` to preserve the older interactive pause behavior.
 - Console mode clears the terminal only for interactive, non-redirected output.
@@ -181,7 +184,7 @@ dotnet tool install -g Edi.MIDIPlayer --add-source .\nupkg
 ## Testing and Validation Notes
 
 - The repository has a dedicated xUnit v3 + Moq test project at `src/Edi.MIDIPlayer.Tests`.
-- Existing tests cover `AppOptions` parsing, console pause option parsing, remote download size/timeout behavior, and tempo conversion.
+- Existing tests cover `AppOptions` parsing, console pause option parsing, active note tracking, remote download size/timeout behavior, and tempo conversion.
 - `dotnet test --configuration Release` should remain green because the CI workflow depends on it.
 - For playback changes, validate at least:
   - local `.mid` playback,

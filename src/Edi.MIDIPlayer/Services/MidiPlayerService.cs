@@ -97,7 +97,7 @@ public class MidiPlayerService(
     private async Task PlayEventsAsync(List<MidiEventInfo> allEvents, IMidiDeviceWrapper midiDevice, int ticksPerQuarterNote)
     {
         var stopwatch = Stopwatch.StartNew();
-        var activeNotes = new HashSet<int>();
+        var activeNotes = new ActiveNoteTracker();
         var tempoMap = tempoManager.BuildTempoMap(allEvents);
 
         consoleDisplay.WriteMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
@@ -121,10 +121,10 @@ public class MidiPlayerService(
         }
 
         consoleDisplay.WriteMessage("COMP", "MIDI injection terminated successfully", ConsoleColor.Green);
-        consoleDisplay.WriteMessage("STATS", $"Final buffer state: 0x{activeNotes.Count:X2} active notes", ConsoleColor.Gray);
+        consoleDisplay.WriteMessage("STATS", $"Final buffer state: 0x{activeNotes.ActiveCount:X2} active notes", ConsoleColor.Gray);
     }
 
-    private void ProcessMidiEvent(MidiEventInfo midiEntry, IMidiDeviceWrapper midiDevice, Stopwatch stopwatch, HashSet<int> activeNotes)
+    private void ProcessMidiEvent(MidiEventInfo midiEntry, IMidiDeviceWrapper midiDevice, Stopwatch stopwatch, ActiveNoteTracker activeNotes)
     {
         var elapsed = stopwatch.Elapsed;
         var timestamp = $"{elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds:D3}";
@@ -135,28 +135,28 @@ public class MidiPlayerService(
                 var noteEvent = (NoteEvent)midiEntry.Event;
                 if (noteEvent.Velocity > 0)
                 {
-                    activeNotes.Add(noteEvent.NoteNumber);
-                    noteProcessor.DisplayNoteOn(timestamp, noteEvent, activeNotes.Count);
+                    activeNotes.NoteOn(noteEvent.Channel, noteEvent.NoteNumber);
+                    noteProcessor.DisplayNoteOn(timestamp, noteEvent, activeNotes.ActiveCount);
                     midiDevice.Send(MidiMessage.StartNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
                 }
                 else
                 {
-                    activeNotes.Remove(noteEvent.NoteNumber);
-                    noteProcessor.DisplayNoteOff(timestamp, noteEvent, activeNotes.Count);
+                    activeNotes.NoteOff(noteEvent.Channel, noteEvent.NoteNumber);
+                    noteProcessor.DisplayNoteOff(timestamp, noteEvent, activeNotes.ActiveCount);
                     midiDevice.Send(MidiMessage.StopNote(noteEvent.NoteNumber, noteEvent.Velocity, noteEvent.Channel).RawData);
                 }
                 break;
 
             case MidiCommandCode.NoteOff:
                 var noteOffEvent = (NoteEvent)midiEntry.Event;
-                activeNotes.Remove(noteOffEvent.NoteNumber);
-                noteProcessor.DisplayNoteOff(timestamp, noteOffEvent, activeNotes.Count);
+                activeNotes.NoteOff(noteOffEvent.Channel, noteOffEvent.NoteNumber);
+                noteProcessor.DisplayNoteOff(timestamp, noteOffEvent, activeNotes.ActiveCount);
                 midiDevice.Send(MidiMessage.StopNote(noteOffEvent.NoteNumber, noteOffEvent.Velocity, noteOffEvent.Channel).RawData);
                 break;
 
             case MidiCommandCode.ControlChange:
                 var controlEvent = (ControlChangeEvent)midiEntry.Event;
-                noteProcessor.DisplayControlChange(timestamp, controlEvent, activeNotes.Count);
+                noteProcessor.DisplayControlChange(timestamp, controlEvent, activeNotes.ActiveCount);
                 midiDevice.Send(MidiMessage.ChangeControl((int)controlEvent.Controller, controlEvent.ControllerValue, controlEvent.Channel).RawData);
                 break;
 

@@ -9,7 +9,7 @@ const activeNotesDisplay = document.getElementById('active-notes');
 const statusMessage = document.getElementById('status-message');
 const emojiContainer = document.getElementById('emoji-container');
 
-const activeNotes = new Set();
+const activeNotes = new Map();
 
 // 浪漫 emoji 库
 const romanticEmojis = [
@@ -75,11 +75,51 @@ function createFireworkExplosion(x, y) {
 }
 
 // SignalR event handlers
+function getActiveNoteKey(channel, noteNumber) {
+    return `${channel}:${noteNumber}`;
+}
+
+function getActiveNoteCountForPitch(noteNumber) {
+    let count = 0;
+    for (const [key, value] of activeNotes) {
+        if (key.endsWith(`:${noteNumber}`)) {
+            count += value;
+        }
+    }
+
+    return count;
+}
+
+function updateActiveNotesDisplay() {
+    activeNotesDisplay.textContent = activeNotes.size;
+}
+
+function noteOn(channel, noteNumber) {
+    const key = getActiveNoteKey(channel, noteNumber);
+    activeNotes.set(key, (activeNotes.get(key) ?? 0) + 1);
+    updateActiveNotesDisplay();
+}
+
+function noteOff(channel, noteNumber) {
+    const key = getActiveNoteKey(channel, noteNumber);
+    const count = activeNotes.get(key);
+    if (count === undefined) {
+        updateActiveNotesDisplay();
+        return;
+    }
+
+    if (count <= 1) {
+        activeNotes.delete(key);
+    } else {
+        activeNotes.set(key, count - 1);
+    }
+
+    updateActiveNotesDisplay();
+}
 
 // 接收音符触发 - 激活钢琴键
 connection.on("ReceiveNoteOn", (noteNumber, velocity, channel, noteName, timestamp) => {
-    activeNotes.add(noteNumber);
-    activeNotesDisplay.textContent = activeNotes.size;
+    noteOn(channel, noteNumber);
 
     // Activate piano key with blue/pink glow
     const key = pianoContainer.querySelector(`[data-note="${noteNumber}"]`);
@@ -115,12 +155,11 @@ connection.on("ReceiveNoteOn", (noteNumber, velocity, channel, noteName, timesta
 });
 
 connection.on("ReceiveNoteOff", (noteNumber, channel, noteName, timestamp) => {
-    activeNotes.delete(noteNumber);
-    activeNotesDisplay.textContent = activeNotes.size;
+    noteOff(channel, noteNumber);
 
     // Deactivate piano key
     const key = pianoContainer.querySelector(`[data-note="${noteNumber}"]`);
-    if (key) {
+    if (key && getActiveNoteCountForPitch(noteNumber) === 0) {
         key.classList.remove('active');
         key.style.boxShadow = '';
     }

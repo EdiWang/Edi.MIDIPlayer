@@ -6,7 +6,7 @@
 
 ## Scope
 
-This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, B, and C were completed. It replaces the original long-form review plan as the active planning document.
+This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, B, C, and D were completed. It replaces the original long-form review plan as the active planning document.
 
 Reviewed scope remains:
 
@@ -41,6 +41,7 @@ The following original tasks are complete and removed from the active task list:
 | Task A: Add focused characterization tests | Completed | Added `Edi.MIDIPlayer.Tests` with xUnit v3 + Moq coverage for CLI parsing, remote download limits/timeouts, and tempo conversion. |
 | Task B: Remove browser log HTML injection risk | Completed | Browser event log entries now use DOM nodes with `textContent` instead of `innerHTML`. |
 | Task C: Make console exit pause opt-in | Completed | Console mode no longer waits for a key by default; `--pause-on-exit` preserves the old pause behavior. |
+| Task D: Correct active note tracking semantics | Completed | Active notes are now tracked by channel plus note number with reference counts in both playback and browser state. |
 
 Detailed execution records:
 
@@ -50,14 +51,14 @@ Detailed execution records:
 - `docs/task-add-characterization-tests.md`
 - `docs/task-remove-browser-log-html-injection.md`
 - `docs/task-console-exit-pause-opt-in.md`
+- `docs/task-correct-active-note-tracking.md`
 
 ## Current Overall Conclusion
 
 - Overall risk level: medium-low.
-- The most valuable next step is to correct active note tracking semantics, because the remaining issue is user-visible and affects both console and web display correctness.
+- The most valuable next step is to make web playback startup and SignalR notification failures observable.
 - The highest remaining product/code risks are:
   - Web SignalR notifications are still fire-and-forget.
-  - Active note state still does not distinguish MIDI channels.
 - Broad architecture rewrites, frontend framework adoption, and cross-platform MIDI output are still not recommended.
 
 ## User Confirmations
@@ -79,7 +80,6 @@ Confirmed by the user on 2026-06-19:
 | ID | Priority | Type | Location | Issue | Impact | Evidence | Suggested Direction |
 |---|---|---|---|---|---|---|---|
 | R5 | P2 | Stability/Maintainability | `Program.cs`, `WebDisplayService.cs`, `WebNoteProcessorService.cs` | Web playback startup and SignalR notifications are fire-and-forget. | Exceptions can be unobserved or silently ignored; event ordering/backpressure is harder to reason about. | `Program.RunWebAsync` uses `_ = Task.Run(...)`; web display/note processors use `_ = hubContext.Clients.All.SendAsync(...)`. | Add observable failure handling with the smallest interface changes possible. |
-| R7 | P2 | Correctness | `MidiPlayerService.cs`, `wwwroot/app.js` | Active notes are keyed only by MIDI note number. | Same pitch on different channels or overlapping note-on events can display incorrect active counts/highlighting. | Server uses `HashSet<int>`; browser uses `Set` of note numbers. | Track active state by channel plus note; consider reference counts for overlapping same-channel notes. |
 | R11 | P3 | Maintainability | `NoteProcessorService.cs`, `WebNoteProcessorService.cs` | Note-name and controller-name logic is duplicated. | Display formatting changes can drift between console and web paths. | Both classes define note-name and controller-name helpers. | Move shared MIDI display formatting into a small internal helper. |
 | R12 | P3 | Architecture | `IConsoleDisplay.cs`, display services | `IConsoleDisplay` is used for both console and web but exposes console-specific members. | Web display implements methods that do not naturally belong to it. | `WebDisplayService` returns a lock and uses a stub-like `CreateVelocityBar`. | Split status output from console rendering helpers after tests are in place. |
 | R13 | P3 | Frontend Maintainability | `wwwroot/index.html`, `src/wwwroot/app.js` | Unused frontend artifacts remain. | Maintainers can edit the wrong file or expect unimplemented behavior. | `waterfallCanvas` has no future purpose; `src/wwwroot/app.js` is empty and should be deleted if still unused. | Remove confirmed unused artifacts and update docs. |
@@ -88,31 +88,6 @@ Confirmed by the user on 2026-06-19:
 | R16 | P3 | Readability/Configuration | Multiple files | Some operational values remain hard-coded. | Behavior changes still require code edits. | Startup delays, MIDI device ID, download timeout, browser log limit, and similar values are scattered. | Centralize only user-visible or likely-to-change values; avoid over-configuring internals. |
 
 ## Remaining Improvement Plan
-
-### Task D: Correct Active Note Tracking Semantics
-
-- Previous task: Task 7.
-- Priority: P2.
-- Related issues: R7.
-- Goal: Track active notes by channel and note so web/console counts reflect MIDI semantics more accurately.
-- Change scope:
-  - `MidiPlayerService`
-  - `src/Edi.MIDIPlayer/wwwroot/app.js`
-  - SignalR payloads only if needed.
-- Not included:
-  - New visualizer features.
-  - MIDI synthesis changes.
-- Expected result:
-  - Same pitch on different channels no longer collapses into one active note.
-  - Overlapping same-channel note behavior is explicit, ideally with reference counts.
-- Verification:
-  - Tests around the extracted active-note logic if introduced.
-  - Manual playback with a MIDI file containing same note across channels.
-  - Web and console smoke tests.
-- Release risk: medium.
-- Rollback plan:
-  - Revert active note representation changes.
-- Needs user confirmation: no.
 
 ### Task E: Make Web Notifications Observable
 
@@ -211,22 +186,22 @@ Confirmed by the user on 2026-06-19:
 
 ## Recommended Execution Order
 
-1. Task D: Correct active note tracking semantics.
-2. Task E: Make web notifications observable.
-3. Task F: Resolve frontend and dependency loose ends.
-4. Task G: Clean up shared display helpers and interfaces.
-5. Task H: Revisit tempo conversion performance only if evidence appears.
+1. Task E: Make web notifications observable.
+2. Task F: Resolve frontend and dependency loose ends.
+3. Task G: Clean up shared display helpers and interfaces.
+4. Task H: Revisit tempo conversion performance only if evidence appears.
 
 ## Next Recommended Task
 
-Start with **Task D: Correct Active Note Tracking Semantics**.
+Start with **Task E: Make Web Notifications Observable**.
 
 Reasoning:
 
 - Task A now protects CLI parsing, download limits/timeouts, and tempo conversion with 25 passing tests.
 - Task B removed the browser log `innerHTML` path.
 - Task C made console exit pause opt-in and added parser coverage for the new flag.
-- Task D is the next user-visible correctness fix and should stay independent from web notification observability work.
+- Task D fixed channel-aware active note state in both server and browser paths.
+- Task E is the next remaining P2 issue and should stay focused on observability without redesigning the event pipeline.
 
 ## Temporarily Not Recommended
 
