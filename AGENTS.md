@@ -12,8 +12,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
   - ASP.NET Core minimal hosting for the default local web visualizer.
   - SignalR server hub at `/midihub`.
   - NAudio `2.2.1` for MIDI file parsing and MIDI output.
-  - `Microsoft.AspNetCore.SignalR.Client` `10.0.1` is referenced in the project file.
-  - Browser UI loads Microsoft SignalR JavaScript from a CDN.
+  - Browser UI loads pinned Microsoft SignalR JavaScript from a CDN script tag in `src/Edi.MIDIPlayer/wwwroot/index.html`.
 - **Build tool**: .NET SDK / MSBuild.
 - **Package management**: NuGet via `Edi.MIDIPlayer.csproj`; no lock file is currently present.
 - **Database/cache/message queue**: none found.
@@ -180,6 +179,8 @@ dotnet tool install -g Edi.MIDIPlayer --add-source .\nupkg
 - No custom environment variables were found.
 - ASP.NET Core host configuration can still be influenced through standard host options and environment variables supported by ASP.NET Core.
 - NuGet package metadata lives in `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`.
+- The app hosts a SignalR server hub and browser client; it does not reference the .NET SignalR client package.
+- The browser SignalR JavaScript version is pinned in `src/Edi.MIDIPlayer/wwwroot/index.html`. Change it only with an explicit compatibility/security reason and verify the web visualizer plus `/midihub` connection afterward.
 - CI publishing requires the `NUGET_API_KEY` GitHub Actions secret.
 
 ## Testing and Validation Notes
@@ -272,6 +273,4 @@ If requirements are unclear and cannot be safely inferred from the codebase, ask
 ## To Be Confirmed
 
 - Whether a repository-wide formatter, `.editorconfig`, or analyzer policy should be added.
-- Whether the browser SignalR JavaScript version should track the .NET server package version.
-- Whether `src/wwwroot/app.js` is intentionally empty or a leftover file.
 - Whether the default MIDI output device should remain fixed to device `0` or become configurable.

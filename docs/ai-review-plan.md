@@ -6,7 +6,7 @@
 
 ## Scope
 
-This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, B, C, D, and E were completed. It replaces the original long-form review plan as the active planning document.
+This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, B, C, D, E, and F were completed. It replaces the original long-form review plan as the active planning document.
 
 Reviewed scope remains:
 
@@ -24,7 +24,6 @@ Reviewed scope remains:
 - `src/Edi.MIDIPlayer/Models/`
 - `src/Edi.MIDIPlayer/Services/`
 - `src/Edi.MIDIPlayer/wwwroot/`
-- `src/wwwroot/app.js`
 - `docs/`
 
 ## Completed Baseline
@@ -43,6 +42,7 @@ The following original tasks are complete and removed from the active task list:
 | Task C: Make console exit pause opt-in | Completed | Console mode no longer waits for a key by default; `--pause-on-exit` preserves the old pause behavior. |
 | Task D: Correct active note tracking semantics | Completed | Active notes are now tracked by channel plus note number with reference counts in both playback and browser state. |
 | Task E: Make web notifications observable | Completed | Web startup background tasks and SignalR sends now log failures through `ILogger`; send observation is covered by tests. |
+| Task F: Resolve frontend and dependency loose ends | Completed | Removed unused `waterfallCanvas`, empty `src/wwwroot/app.js`, and unused .NET SignalR client package; documented browser SignalR JS policy. |
 
 Detailed execution records:
 
@@ -54,13 +54,15 @@ Detailed execution records:
 - `docs/task-console-exit-pause-opt-in.md`
 - `docs/task-correct-active-note-tracking.md`
 - `docs/task-make-web-notifications-observable.md`
+- `docs/task-resolve-frontend-dependency-loose-ends.md`
 
 ## Current Overall Conclusion
 
 - Overall risk level: medium-low.
-- The most valuable next step is to resolve confirmed unused frontend artifacts and dependency loose ends.
+- The most valuable next step is to clean up shared display helpers and display interfaces.
 - The highest remaining product/code risks are:
-  - Unused frontend artifacts/dependencies can still confuse maintenance.
+  - Console and web display formatting/helpers still have duplication.
+  - `IConsoleDisplay` still exposes console-specific members to web display implementations.
 - Broad architecture rewrites, frontend framework adoption, and cross-platform MIDI output are still not recommended.
 
 ## User Confirmations
@@ -83,41 +85,10 @@ Confirmed by the user on 2026-06-19:
 |---|---|---|---|---|---|---|---|
 | R11 | P3 | Maintainability | `NoteProcessorService.cs`, `WebNoteProcessorService.cs` | Note-name and controller-name logic is duplicated. | Display formatting changes can drift between console and web paths. | Both classes define note-name and controller-name helpers. | Move shared MIDI display formatting into a small internal helper. |
 | R12 | P3 | Architecture | `IConsoleDisplay.cs`, display services | `IConsoleDisplay` is used for both console and web but exposes console-specific members. | Web display implements methods that do not naturally belong to it. | `WebDisplayService` returns a lock and uses a stub-like `CreateVelocityBar`. | Split status output from console rendering helpers after tests are in place. |
-| R13 | P3 | Frontend Maintainability | `wwwroot/index.html`, `src/wwwroot/app.js` | Unused frontend artifacts remain. | Maintainers can edit the wrong file or expect unimplemented behavior. | `waterfallCanvas` has no future purpose; `src/wwwroot/app.js` is empty and should be deleted if still unused. | Remove confirmed unused artifacts and update docs. |
-| R14 | P3 | Dependency/Framework Use | `Edi.MIDIPlayer.csproj`, `index.html` | SignalR dependency/version usage remains unclear. | Unused dependencies and version drift can confuse maintenance. | Browser loads SignalR JS from CDN; project references `Microsoft.AspNetCore.SignalR.Client`. | Confirm current references, remove unused package if safe, and document JS version policy. |
 | R15 | P3 | Performance | `TempoManagerService.cs`, `MidiPlayerService.cs` | Tick-to-time conversion scans the tempo map from the beginning for each event. | Large MIDI files with many tempo changes could spend unnecessary CPU. | `TicksToTimeSpan` loops from index 0 per event. | Defer until profiling or real-world files show a problem. |
 | R16 | P3 | Readability/Configuration | Multiple files | Some operational values remain hard-coded. | Behavior changes still require code edits. | Startup delays, MIDI device ID, download timeout, browser log limit, and similar values are scattered. | Centralize only user-visible or likely-to-change values; avoid over-configuring internals. |
 
 ## Remaining Improvement Plan
-
-### Task F: Resolve Frontend And Dependency Loose Ends
-
-- Previous task: Task 12.
-- Priority: P3.
-- Related issues: R13, R14, R16.
-- Goal: Remove confirmed unused assets/dependencies and document remaining version choices.
-- Change scope:
-  - `src/Edi.MIDIPlayer/wwwroot/index.html`
-  - `src/Edi.MIDIPlayer/wwwroot/app.js`
-  - `src/wwwroot/app.js`
-  - `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`
-  - README/AGENTS.
-- Not included:
-  - Full visual redesign.
-  - Dependency upgrades without a confirmed reason.
-- Expected result:
-  - `waterfallCanvas` removed.
-  - `src/wwwroot/app.js` removed if still unused.
-  - `Microsoft.AspNetCore.SignalR.Client` removed if still unused by source/build.
-  - SignalR browser JS version policy documented.
-- Verification:
-  - Repository search before deleting/removing.
-  - Build.
-  - Web visualizer smoke test and `/midihub` connection.
-- Release risk: low.
-- Rollback plan:
-  - Revert individual asset/dependency changes.
-- Needs user confirmation: no, as long as unused status is reconfirmed by search.
 
 ### Task G: Clean Up Shared Display Helpers And Interfaces
 
@@ -160,13 +131,12 @@ Confirmed by the user on 2026-06-19:
 
 ## Recommended Execution Order
 
-1. Task F: Resolve frontend and dependency loose ends.
-2. Task G: Clean up shared display helpers and interfaces.
-3. Task H: Revisit tempo conversion performance only if evidence appears.
+1. Task G: Clean up shared display helpers and interfaces.
+2. Task H: Revisit tempo conversion performance only if evidence appears.
 
 ## Next Recommended Task
 
-Start with **Task F: Resolve Frontend And Dependency Loose Ends**.
+Start with **Task G: Clean Up Shared Display Helpers And Interfaces**.
 
 Reasoning:
 
@@ -175,7 +145,8 @@ Reasoning:
 - Task C made console exit pause opt-in and added parser coverage for the new flag.
 - Task D fixed channel-aware active note state in both server and browser paths.
 - Task E added logging for web background tasks and SignalR send failures.
-- Task F is now the next low-risk maintenance cleanup, as long as unused status is reconfirmed by search before deletion/removal.
+- Task F removed confirmed unused frontend/dependency loose ends and documented the remaining browser SignalR JavaScript policy.
+- Task G is now the main remaining maintainability cleanup.
 
 ## Temporarily Not Recommended
 
@@ -193,8 +164,6 @@ Reasoning:
 ## Open Questions
 
 - No questions currently block the remaining plan.
-- Before deleting `src/wwwroot/app.js`, confirm it is still unused with repository search.
-- Before removing `Microsoft.AspNetCore.SignalR.Client`, confirm it is still unused with repository search and build/test after the change.
 
 ## Execution Notes For Future Work
 
