@@ -2,6 +2,7 @@ using Edi.MIDIPlayer.Hubs;
 using Edi.MIDIPlayer.Interfaces;
 using Edi.MIDIPlayer.Services;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -79,7 +80,7 @@ internal class Program
         Console.WriteLine($"Starting MIDI Player Web Visualizer at {bindingUrls}");
         Console.WriteLine($"Opening browser at {launchUrl}...");
 
-        _ = Task.Run(async () =>
+        _ = RunObservedBackgroundTaskAsync("browser launch", async () =>
         {
             await Task.Delay(2000);
             try
@@ -90,16 +91,17 @@ internal class Program
                     UseShellExecute = true
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                app.Logger.LogWarning(ex, "Failed to open browser at {LaunchUrl}.", launchUrl);
             }
-        });
+        }, app.Logger);
 
-        _ = Task.Run(async () =>
+        _ = RunObservedBackgroundTaskAsync("MIDI playback startup", async () =>
         {
             await Task.Delay(3000);
             await PlayRequestedMidiFileAsync(app.Services, options.MidiArgs, validateLocalPath: true);
-        });
+        }, app.Logger);
 
         if (options.WebUrls is null)
         {
@@ -108,6 +110,21 @@ internal class Program
         else
         {
             await app.RunAsync();
+        }
+    }
+
+    private static async Task RunObservedBackgroundTaskAsync(
+        string operationName,
+        Func<Task> operation,
+        ILogger logger)
+    {
+        try
+        {
+            await operation();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Background operation {OperationName} failed.", operationName);
         }
     }
 

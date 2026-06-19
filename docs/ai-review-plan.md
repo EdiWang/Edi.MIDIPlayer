@@ -6,7 +6,7 @@
 
 ## Scope
 
-This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, B, C, and D were completed. It replaces the original long-form review plan as the active planning document.
+This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, B, C, D, and E were completed. It replaces the original long-form review plan as the active planning document.
 
 Reviewed scope remains:
 
@@ -42,6 +42,7 @@ The following original tasks are complete and removed from the active task list:
 | Task B: Remove browser log HTML injection risk | Completed | Browser event log entries now use DOM nodes with `textContent` instead of `innerHTML`. |
 | Task C: Make console exit pause opt-in | Completed | Console mode no longer waits for a key by default; `--pause-on-exit` preserves the old pause behavior. |
 | Task D: Correct active note tracking semantics | Completed | Active notes are now tracked by channel plus note number with reference counts in both playback and browser state. |
+| Task E: Make web notifications observable | Completed | Web startup background tasks and SignalR sends now log failures through `ILogger`; send observation is covered by tests. |
 
 Detailed execution records:
 
@@ -52,13 +53,14 @@ Detailed execution records:
 - `docs/task-remove-browser-log-html-injection.md`
 - `docs/task-console-exit-pause-opt-in.md`
 - `docs/task-correct-active-note-tracking.md`
+- `docs/task-make-web-notifications-observable.md`
 
 ## Current Overall Conclusion
 
 - Overall risk level: medium-low.
-- The most valuable next step is to make web playback startup and SignalR notification failures observable.
+- The most valuable next step is to resolve confirmed unused frontend artifacts and dependency loose ends.
 - The highest remaining product/code risks are:
-  - Web SignalR notifications are still fire-and-forget.
+  - Unused frontend artifacts/dependencies can still confuse maintenance.
 - Broad architecture rewrites, frontend framework adoption, and cross-platform MIDI output are still not recommended.
 
 ## User Confirmations
@@ -79,7 +81,6 @@ Confirmed by the user on 2026-06-19:
 
 | ID | Priority | Type | Location | Issue | Impact | Evidence | Suggested Direction |
 |---|---|---|---|---|---|---|---|
-| R5 | P2 | Stability/Maintainability | `Program.cs`, `WebDisplayService.cs`, `WebNoteProcessorService.cs` | Web playback startup and SignalR notifications are fire-and-forget. | Exceptions can be unobserved or silently ignored; event ordering/backpressure is harder to reason about. | `Program.RunWebAsync` uses `_ = Task.Run(...)`; web display/note processors use `_ = hubContext.Clients.All.SendAsync(...)`. | Add observable failure handling with the smallest interface changes possible. |
 | R11 | P3 | Maintainability | `NoteProcessorService.cs`, `WebNoteProcessorService.cs` | Note-name and controller-name logic is duplicated. | Display formatting changes can drift between console and web paths. | Both classes define note-name and controller-name helpers. | Move shared MIDI display formatting into a small internal helper. |
 | R12 | P3 | Architecture | `IConsoleDisplay.cs`, display services | `IConsoleDisplay` is used for both console and web but exposes console-specific members. | Web display implements methods that do not naturally belong to it. | `WebDisplayService` returns a lock and uses a stub-like `CreateVelocityBar`. | Split status output from console rendering helpers after tests are in place. |
 | R13 | P3 | Frontend Maintainability | `wwwroot/index.html`, `src/wwwroot/app.js` | Unused frontend artifacts remain. | Maintainers can edit the wrong file or expect unimplemented behavior. | `waterfallCanvas` has no future purpose; `src/wwwroot/app.js` is empty and should be deleted if still unused. | Remove confirmed unused artifacts and update docs. |
@@ -88,33 +89,6 @@ Confirmed by the user on 2026-06-19:
 | R16 | P3 | Readability/Configuration | Multiple files | Some operational values remain hard-coded. | Behavior changes still require code edits. | Startup delays, MIDI device ID, download timeout, browser log limit, and similar values are scattered. | Centralize only user-visible or likely-to-change values; avoid over-configuring internals. |
 
 ## Remaining Improvement Plan
-
-### Task E: Make Web Notifications Observable
-
-- Previous task: Task 6.
-- Priority: P2.
-- Related issues: R5.
-- Goal: Stop silently ignoring web playback startup and SignalR send failures.
-- Change scope:
-  - `Program.RunWebAsync`
-  - `WebDisplayService`
-  - `WebNoteProcessorService`
-  - Possibly display/note interfaces if async sends are adopted.
-- Not included:
-  - Persistent event storage.
-  - A large event bus architecture.
-- Expected result:
-  - Playback startup failures are logged or displayed.
-  - SignalR send failures are observable.
-  - Playback continues when visualizer notification failure is non-fatal.
-- Verification:
-  - Build.
-  - Web mode with and without browser clients.
-  - A controlled send-failure test or temporary local failure path if practical.
-- Release risk: medium.
-- Rollback plan:
-  - Revert async/observability changes.
-- Needs user confirmation: no for minimal logging; yes if broad interface changes are proposed.
 
 ### Task F: Resolve Frontend And Dependency Loose Ends
 
@@ -186,14 +160,13 @@ Confirmed by the user on 2026-06-19:
 
 ## Recommended Execution Order
 
-1. Task E: Make web notifications observable.
-2. Task F: Resolve frontend and dependency loose ends.
-3. Task G: Clean up shared display helpers and interfaces.
-4. Task H: Revisit tempo conversion performance only if evidence appears.
+1. Task F: Resolve frontend and dependency loose ends.
+2. Task G: Clean up shared display helpers and interfaces.
+3. Task H: Revisit tempo conversion performance only if evidence appears.
 
 ## Next Recommended Task
 
-Start with **Task E: Make Web Notifications Observable**.
+Start with **Task F: Resolve Frontend And Dependency Loose Ends**.
 
 Reasoning:
 
@@ -201,7 +174,8 @@ Reasoning:
 - Task B removed the browser log `innerHTML` path.
 - Task C made console exit pause opt-in and added parser coverage for the new flag.
 - Task D fixed channel-aware active note state in both server and browser paths.
-- Task E is the next remaining P2 issue and should stay focused on observability without redesigning the event pipeline.
+- Task E added logging for web background tasks and SignalR send failures.
+- Task F is now the next low-risk maintenance cleanup, as long as unused status is reconfirmed by search before deletion/removal.
 
 ## Temporarily Not Recommended
 

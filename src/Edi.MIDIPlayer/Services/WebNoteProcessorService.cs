@@ -1,11 +1,14 @@
 using Edi.MIDIPlayer.Hubs;
 using Edi.MIDIPlayer.Interfaces;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using NAudio.Midi;
 
 namespace Edi.MIDIPlayer.Services;
 
-public class WebNoteProcessorService(IHubContext<MidiPlayerHub> hubContext) : INoteProcessor
+public class WebNoteProcessorService(
+    IHubContext<MidiPlayerHub> hubContext,
+    ILogger<WebNoteProcessorService> logger) : INoteProcessor
 {
     private static readonly Dictionary<int, string> NoteNames = new()
     {
@@ -32,32 +35,41 @@ public class WebNoteProcessorService(IHubContext<MidiPlayerHub> hubContext) : IN
     public void DisplayNoteOn(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
         var noteName = GetNoteName(noteEvent.NoteNumber);
-        _ = hubContext.Clients.All.SendAsync("ReceiveNoteOn",
-            noteEvent.NoteNumber,
-            noteEvent.Velocity,
-            noteEvent.Channel,
-            noteName,
-            timestamp);
+        _ = SignalRSendObserver.ObserveAsync(
+            hubContext.Clients.All.SendAsync("ReceiveNoteOn",
+                noteEvent.NoteNumber,
+                noteEvent.Velocity,
+                noteEvent.Channel,
+                noteName,
+                timestamp),
+            logger,
+            "ReceiveNoteOn");
     }
 
     public void DisplayNoteOff(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
         var noteName = GetNoteName(noteEvent.NoteNumber);
-        _ = hubContext.Clients.All.SendAsync("ReceiveNoteOff",
-            noteEvent.NoteNumber,
-            noteEvent.Channel,
-            noteName,
-            timestamp);
+        _ = SignalRSendObserver.ObserveAsync(
+            hubContext.Clients.All.SendAsync("ReceiveNoteOff",
+                noteEvent.NoteNumber,
+                noteEvent.Channel,
+                noteName,
+                timestamp),
+            logger,
+            "ReceiveNoteOff");
     }
 
     public void DisplayControlChange(string timestamp, ControlChangeEvent controlEvent, int activeNotesCount)
     {
         var controllerName = GetControllerName(controlEvent.Controller);
-        _ = hubContext.Clients.All.SendAsync("ReceiveControlChange",
-            controllerName,
-            controlEvent.ControllerValue,
-            controlEvent.Channel,
-            timestamp);
+        _ = SignalRSendObserver.ObserveAsync(
+            hubContext.Clients.All.SendAsync("ReceiveControlChange",
+                controllerName,
+                controlEvent.ControllerValue,
+                controlEvent.Channel,
+                timestamp),
+            logger,
+            "ReceiveControlChange");
     }
 
     private static string GetControllerName(MidiController controller)

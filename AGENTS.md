@@ -112,7 +112,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
   - `InputHandlerService` reads command-line or interactive input.
   - `MidiDeviceWrapper` adapts NAudio `MidiOut`.
   - `ConsoleDisplayService` and `NoteProcessorService` render terminal output.
-  - `WebDisplayService` and `WebNoteProcessorService` publish SignalR events.
+  - `WebDisplayService` and `WebNoteProcessorService` publish SignalR events and log send failures through `SignalRSendObserver`.
 
 - `wwwroot/`
   - Static assets for the web visualizer.
@@ -136,6 +136,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 - Local file validation happens before playback unless the source is HTTP/HTTPS.
 - Remote downloads are limited to HTTP/HTTPS URLs ending in `.mid` or `.midi`, must be smaller than 10 MB, and use `HttpClient` with a configured user agent and timeouts. `MidiPlayerService` currently requests a 30-second download timeout.
 - Active note display state is tracked by channel plus note number. Overlapping same-channel note-on events use reference counts so one note-off does not clear a still-active note.
+- Web-mode background startup failures and SignalR send failures are logged with `ILogger`.
 - The default web URL is `http://localhost:5000` when `--urls` is not provided.
 - Console mode does not pause before exit by default; use `--pause-on-exit` to preserve the older interactive pause behavior.
 - Console mode clears the terminal only for interactive, non-redirected output.
@@ -184,7 +185,7 @@ dotnet tool install -g Edi.MIDIPlayer --add-source .\nupkg
 ## Testing and Validation Notes
 
 - The repository has a dedicated xUnit v3 + Moq test project at `src/Edi.MIDIPlayer.Tests`.
-- Existing tests cover `AppOptions` parsing, console pause option parsing, active note tracking, remote download size/timeout behavior, and tempo conversion.
+- Existing tests cover `AppOptions` parsing, console pause option parsing, active note tracking, SignalR send observation, remote download size/timeout behavior, and tempo conversion.
 - `dotnet test --configuration Release` should remain green because the CI workflow depends on it.
 - For playback changes, validate at least:
   - local `.mid` playback,
