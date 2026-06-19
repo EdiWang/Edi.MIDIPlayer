@@ -6,7 +6,7 @@
 
 ## Scope
 
-This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, and A were completed. It replaces the original long-form review plan as the active planning document.
+This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, and B were completed. It replaces the original long-form review plan as the active planning document.
 
 Reviewed scope remains:
 
@@ -39,6 +39,7 @@ The following original tasks are complete and removed from the active task list:
 | Task 4: Align web URL binding and browser launch | Completed | `--urls` is captured by `AppOptions` and used for web binding/browser launch. |
 | Task 9: Extract small, stable `Program` responsibilities | Completed | `DisplayMode` and `AppOptions` moved to `src/Edi.MIDIPlayer/AppOptions.cs`. |
 | Task A: Add focused characterization tests | Completed | Added `Edi.MIDIPlayer.Tests` with xUnit v3 + Moq coverage for CLI parsing, remote download limits/timeouts, and tempo conversion. |
+| Task B: Remove browser log HTML injection risk | Completed | Browser event log entries now use DOM nodes with `textContent` instead of `innerHTML`. |
 
 Detailed execution records:
 
@@ -46,13 +47,13 @@ Detailed execution records:
 - `docs/task-align-web-urls.md`
 - `docs/task-extract-program-responsibilities.md`
 - `docs/task-add-characterization-tests.md`
+- `docs/task-remove-browser-log-html-injection.md`
 
 ## Current Overall Conclusion
 
 - Overall risk level: medium-low.
-- The most valuable next step is to remove browser log HTML injection risk, because it is a small, isolated security improvement with clear verification.
+- The most valuable next step is to make console exit pause opt-in, because it is a user-visible CLI behavior fix with focused parser coverage already in place.
 - The highest remaining product/code risks are:
-  - Browser log rendering still uses `innerHTML`.
   - Web SignalR notifications are still fire-and-forget.
   - Active note state still does not distinguish MIDI channels.
   - Console mode still pauses on exit by default.
@@ -77,7 +78,6 @@ Confirmed by the user on 2026-06-19:
 | ID | Priority | Type | Location | Issue | Impact | Evidence | Suggested Direction |
 |---|---|---|---|---|---|---|---|
 | R5 | P2 | Stability/Maintainability | `Program.cs`, `WebDisplayService.cs`, `WebNoteProcessorService.cs` | Web playback startup and SignalR notifications are fire-and-forget. | Exceptions can be unobserved or silently ignored; event ordering/backpressure is harder to reason about. | `Program.RunWebAsync` uses `_ = Task.Run(...)`; web display/note processors use `_ = hubContext.Clients.All.SendAsync(...)`. | Add observable failure handling with the smallest interface changes possible. |
-| R6 | P2 | Security | `src/Edi.MIDIPlayer/wwwroot/app.js` | Browser event log uses `innerHTML` for message rendering. | Local self-XSS is possible from user-provided URLs/paths or exception messages. | `addLogEntry` interpolates `timestamp`, `type`, and `message` into `entry.innerHTML`. | Build log entries with DOM nodes and `textContent`. |
 | R7 | P2 | Correctness | `MidiPlayerService.cs`, `wwwroot/app.js` | Active notes are keyed only by MIDI note number. | Same pitch on different channels or overlapping note-on events can display incorrect active counts/highlighting. | Server uses `HashSet<int>`; browser uses `Set` of note numbers. | Track active state by channel plus note; consider reference counts for overlapping same-channel notes. |
 | R9 | P2 | CLI Usability | `Program.cs`, `AppOptions.cs` | Console mode always clears the terminal and waits for a key before exit. | Scripts and non-interactive usage can hang or lose terminal output. | `RunConsoleAsync` calls `Console.Clear()` and always calls `Console.ReadKey()` in `finally`. | Add an opt-in pause flag and avoid clearing/pausing in non-interactive flows. |
 | R11 | P3 | Maintainability | `NoteProcessorService.cs`, `WebNoteProcessorService.cs` | Note-name and controller-name logic is duplicated. | Display formatting changes can drift between console and web paths. | Both classes define note-name and controller-name helpers. | Move shared MIDI display formatting into a small internal helper. |
@@ -88,29 +88,6 @@ Confirmed by the user on 2026-06-19:
 | R16 | P3 | Readability/Configuration | Multiple files | Some operational values remain hard-coded. | Behavior changes still require code edits. | Startup delays, MIDI device ID, download timeout, browser log limit, and similar values are scattered. | Centralize only user-visible or likely-to-change values; avoid over-configuring internals. |
 
 ## Remaining Improvement Plan
-
-### Task B: Remove Browser Log HTML Injection Risk
-
-- Previous task: Task 5.
-- Priority: P2.
-- Related issues: R6.
-- Goal: Render browser event log entries as text, not HTML.
-- Change scope:
-  - `src/Edi.MIDIPlayer/wwwroot/app.js`.
-- Not included:
-  - Visual redesign.
-  - SignalR event contract changes.
-- Expected result:
-  - Log appearance remains effectively the same.
-  - Messages containing `<`, `>`, `"`, and `&` render literally.
-- Verification:
-  - Build.
-  - Run web visualizer.
-  - Simulate or trigger messages containing HTML-like characters.
-- Release risk: low.
-- Rollback plan:
-  - Revert the JS rendering change.
-- Needs user confirmation: no.
 
 ### Task C: Make Console Exit Pause Opt-In
 
@@ -259,23 +236,22 @@ Confirmed by the user on 2026-06-19:
 
 ## Recommended Execution Order
 
-1. Task B: Remove browser log HTML injection risk.
-2. Task C: Make console exit pause opt-in.
-3. Task D: Correct active note tracking semantics.
-4. Task E: Make web notifications observable.
-5. Task F: Resolve frontend and dependency loose ends.
-6. Task G: Clean up shared display helpers and interfaces.
-7. Task H: Revisit tempo conversion performance only if evidence appears.
+1. Task C: Make console exit pause opt-in.
+2. Task D: Correct active note tracking semantics.
+3. Task E: Make web notifications observable.
+4. Task F: Resolve frontend and dependency loose ends.
+5. Task G: Clean up shared display helpers and interfaces.
+6. Task H: Revisit tempo conversion performance only if evidence appears.
 
 ## Next Recommended Task
 
-Start with **Task B: Remove Browser Log HTML Injection Risk**.
+Start with **Task C: Make Console Exit Pause Opt-In**.
 
 Reasoning:
 
 - Task A now protects CLI parsing, download limits/timeouts, and tempo conversion with 25 passing tests.
-- Task B is a small, isolated security fix in `wwwroot/app.js`.
-- It should be easy to verify with tests/build plus a web visualizer smoke test using HTML-like log text.
+- Task B removed the browser log `innerHTML` path.
+- Task C is now the next low-risk, user-visible behavior fix and can extend the existing `AppOptions` tests.
 
 ## Temporarily Not Recommended
 

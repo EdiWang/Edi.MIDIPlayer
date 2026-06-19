@@ -140,11 +140,19 @@ connection.on("ReceiveMessage", (type, message, color) => {
 function addLogEntry(className, timestamp, type, message) {
     const entry = document.createElement('div');
     entry.className = `log-entry ${className}`;
-    entry.innerHTML = `
-        <span class="timestamp">${timestamp}</span>
-        <span class="type">${type}</span>
-        <span>${message}</span>
-    `;
+
+    const timestampElement = document.createElement('span');
+    timestampElement.className = 'timestamp';
+    timestampElement.textContent = timestamp;
+
+    const typeElement = document.createElement('span');
+    typeElement.className = 'type';
+    typeElement.textContent = type;
+
+    const messageElement = document.createElement('span');
+    messageElement.textContent = message;
+
+    entry.append(timestampElement, typeElement, messageElement);
 
     eventLog.insertBefore(entry, eventLog.firstChild);
 

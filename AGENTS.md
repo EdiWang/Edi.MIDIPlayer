@@ -188,6 +188,7 @@ dotnet tool install -g Edi.MIDIPlayer --add-source .\nupkg
   - console display mode,
   - behavior when no MIDI output device is available, if feasible.
 - For web UI changes, verify that `/midihub` connects and that `ReceiveNoteOn`, `ReceiveNoteOff`, `ReceiveControlChange`, and `ReceiveMessage` still match `app.js`.
+- For event-log UI changes, verify that HTML-like text such as `<script>alert(1)</script>` renders literally rather than as markup.
 
 ## AI Coding Assistant Rules
 
