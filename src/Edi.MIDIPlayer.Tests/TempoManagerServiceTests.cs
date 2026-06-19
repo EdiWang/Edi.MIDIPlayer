@@ -51,6 +51,6 @@ public class TempoManagerServiceTests
 
     private static TempoManagerService CreateTempoManager()
     {
-        return new TempoManagerService(Mock.Of<IConsoleDisplay>());
+        return new TempoManagerService(Mock.Of<IDisplayService>());
     }
 }

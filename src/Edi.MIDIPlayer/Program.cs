@@ -55,7 +55,7 @@ internal class Program
         var builder = WebApplication.CreateBuilder(options.HostArgs);
 
         builder.Services.AddSignalR();
-        builder.Services.AddSingleton<IConsoleDisplay, WebDisplayService>();
+        builder.Services.AddSingleton<IDisplayService, WebDisplayService>();
         builder.Services.AddSingleton<IInputHandler, InputHandlerService>();
         builder.Services.AddSingleton<ITempoManager, TempoManagerService>();
         builder.Services.AddSingleton<INoteProcessor, WebNoteProcessorService>();
@@ -174,15 +174,15 @@ internal class Program
         }
         catch (Exception ex)
         {
-            var consoleDisplay = serviceProvider.GetRequiredService<IConsoleDisplay>();
-            consoleDisplay.WriteMessage("FATAL", $"Unexpected error: {ex.Message}", ConsoleColor.Red);
+            var displayService = serviceProvider.GetRequiredService<IDisplayService>();
+            displayService.WriteMessage("FATAL", $"Unexpected error: {ex.Message}", ConsoleColor.Red);
         }
         finally
         {
             if (CanReadExitKey(options))
             {
-                var consoleDisplay = serviceProvider.GetRequiredService<IConsoleDisplay>();
-                consoleDisplay.WriteMessage("SYSTEM", "Press any key to exit...", ConsoleColor.Yellow);
+                var displayService = serviceProvider.GetRequiredService<IDisplayService>();
+                displayService.WriteMessage("SYSTEM", "Press any key to exit...", ConsoleColor.Yellow);
                 Console.ReadKey(intercept: true);
             }
         }
@@ -198,7 +198,11 @@ internal class Program
         Host.CreateDefaultBuilder(args)
             .ConfigureServices((context, services) =>
             {
-                services.AddSingleton<IConsoleDisplay, ConsoleDisplayService>();
+                services.AddSingleton<ConsoleDisplayService>();
+                services.AddSingleton<IDisplayService>(serviceProvider =>
+                    serviceProvider.GetRequiredService<ConsoleDisplayService>());
+                services.AddSingleton<IConsoleDisplay>(serviceProvider =>
+                    serviceProvider.GetRequiredService<ConsoleDisplayService>());
                 services.AddSingleton<IInputHandler, InputHandlerService>();
                 services.AddSingleton<ITempoManager, TempoManagerService>();
                 services.AddSingleton<INoteProcessor, NoteProcessorService>();
@@ -217,16 +221,16 @@ internal class Program
         string[] midiArgs,
         bool validateLocalPath)
     {
-        var consoleDisplay = serviceProvider.GetRequiredService<IConsoleDisplay>();
+        var displayService = serviceProvider.GetRequiredService<IDisplayService>();
         var inputHandler = serviceProvider.GetRequiredService<IInputHandler>();
         var midiPlayer = serviceProvider.GetRequiredService<IMidiPlayerService>();
 
-        consoleDisplay.DisplayHackerBanner();
+        displayService.DisplayHackerBanner();
 
         var fileUrl = inputHandler.GetMidiFileUrl(midiArgs);
         if (string.IsNullOrEmpty(fileUrl))
         {
-            consoleDisplay.WriteMessage("ERROR", "MIDI file path or URL not provided", ConsoleColor.Red);
+            displayService.WriteMessage("ERROR", "MIDI file path or URL not provided", ConsoleColor.Red);
             return;
         }
 
@@ -235,7 +239,7 @@ internal class Program
               (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)) &&
             !File.Exists(fileUrl))
         {
-            consoleDisplay.WriteMessage("ERROR", "MIDI file not found or invalid path", ConsoleColor.Red);
+            displayService.WriteMessage("ERROR", "MIDI file not found or invalid path", ConsoleColor.Red);
             return;
         }
 

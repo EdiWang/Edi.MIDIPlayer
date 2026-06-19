@@ -5,31 +5,9 @@ namespace Edi.MIDIPlayer.Services;
 
 public class NoteProcessorService(IConsoleDisplay consoleDisplay) : INoteProcessor
 {
-    private static readonly Dictionary<int, string> NoteNames = new()
-    {
-        { 0, "C" }, { 1, "C#" }, { 2, "D" }, { 3, "D#" }, { 4, "E" }, { 5, "F" },
-        { 6, "F#" }, { 7, "G" }, { 8, "G#" }, { 9, "A" }, { 10, "A#" }, { 11, "B" }
-    };
-
-    public string GetNoteName(int noteNumber)
-    {
-        var octave = (noteNumber / 12) - 1;
-        var note = NoteNames[noteNumber % 12];
-        return $"{note}{octave}";
-    }
-
-    public ConsoleColor GetNoteColor(int noteNumber)
-    {
-        return (noteNumber % 12) switch
-        {
-            0 or 2 or 4 or 5 or 7 or 9 or 11 => ConsoleColor.White,  // Natural notes
-            _ => ConsoleColor.Magenta  // Sharp/flat notes
-        };
-    }
-
     public void DisplayNoteOn(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
-        var noteName = GetNoteName(noteEvent.NoteNumber);
+        var noteName = MidiDisplayFormatter.GetNoteName(noteEvent.NoteNumber);
         var velocityBar = consoleDisplay.CreateVelocityBar(noteEvent.Velocity);
 
         lock (consoleDisplay.GetConsoleLock())
@@ -40,7 +18,7 @@ public class NoteProcessorService(IConsoleDisplay consoleDisplay) : INoteProcess
             Console.ResetColor();
             Console.Write("] ");
 
-            Console.ForegroundColor = GetNoteColor(noteEvent.NoteNumber);
+            Console.ForegroundColor = MidiDisplayFormatter.GetNoteColor(noteEvent.NoteNumber);
             Console.Write("▲ ");
             Console.ResetColor();
 
@@ -71,7 +49,7 @@ public class NoteProcessorService(IConsoleDisplay consoleDisplay) : INoteProcess
 
     public void DisplayNoteOff(string timestamp, NoteEvent noteEvent, int activeNotesCount)
     {
-        var noteName = GetNoteName(noteEvent.NoteNumber);
+        var noteName = MidiDisplayFormatter.GetNoteName(noteEvent.NoteNumber);
 
         lock (consoleDisplay.GetConsoleLock())
         {
@@ -114,7 +92,7 @@ public class NoteProcessorService(IConsoleDisplay consoleDisplay) : INoteProcess
 
     public void DisplayControlChange(string timestamp, ControlChangeEvent controlEvent, int activeNotesCount)
     {
-        var controllerName = GetControllerName(controlEvent.Controller);
+        var controllerName = MidiDisplayFormatter.GetControllerName(controlEvent.Controller);
         var valueBar = consoleDisplay.CreateVelocityBar(controlEvent.ControllerValue);
 
         lock (consoleDisplay.GetConsoleLock())
@@ -152,20 +130,6 @@ public class NoteProcessorService(IConsoleDisplay consoleDisplay) : INoteProcess
             Console.WriteLine();
             Console.ResetColor();
         }
-    }
-
-    private static string GetControllerName(MidiController controller)
-    {
-        return controller switch
-        {
-            MidiController.Sustain => "SUST",
-            MidiController.MainVolume => "VOL",
-            MidiController.Pan => "PAN",
-            MidiController.Expression => "EXPR",
-            MidiController.Modulation => "MOD",
-            MidiController.AllNotesOff => "ANOF",
-            _ => $"CC{(int)controller:D2}"
-        };
     }
 
     public void SendNotePreview(int noteNumber, int velocity, int channel, double delayMs)

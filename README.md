@@ -25,7 +25,7 @@ The main business modules are:
 - **Tempo management**: `TempoManagerService` converts MIDI ticks into real playback time, including tempo changes.
 - **Input and download services**: `InputHandlerService` reads the requested source, and `FileDownloaderService` retrieves remote MIDI files.
 - **Display services**: `ConsoleDisplayService` and `WebDisplayService` share the same playback pipeline but render status through terminal output or SignalR messages.
-- **Note processors**: `NoteProcessorService` and `WebNoteProcessorService` translate note/control events into display-specific messages. Web SignalR send failures are logged.
+- **Note processors**: `NoteProcessorService` and `WebNoteProcessorService` translate note/control events into display-specific messages through shared MIDI display formatting. Web SignalR send failures are logged.
 - **Web visualizer**: `wwwroot/index.html`, `styles.css`, and `app.js` render the browser UI and listen for SignalR events from `/midihub`.
 
 Key concepts:

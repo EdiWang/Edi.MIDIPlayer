@@ -6,7 +6,7 @@ using System.Diagnostics;
 namespace Edi.MIDIPlayer.Services;
 
 public class MidiPlayerService(
-    IConsoleDisplay consoleDisplay,
+    IDisplayService displayService,
     ITempoManager tempoManager,
     INoteProcessor noteProcessor,
     IFileDownloader fileDownloader) : IMidiPlayerService
@@ -22,14 +22,14 @@ public class MidiPlayerService(
             {
                 if (!IsRemoteMidiUrl(uri))
                 {
-                    consoleDisplay.WriteMessage("ERROR", "Remote MIDI URLs must end with .mid or .midi", ConsoleColor.Red);
+                    displayService.WriteMessage("ERROR", "Remote MIDI URLs must end with .mid or .midi", ConsoleColor.Red);
                     return;
                 }
 
-                consoleDisplay.WriteMessage("NET", $"Downloading MIDI file from: {fileUrl}", ConsoleColor.Cyan);
+                displayService.WriteMessage("NET", $"Downloading MIDI file from: {fileUrl}", ConsoleColor.Cyan);
                 var midiData = await fileDownloader.DownloadAsync(fileUrl, TimeSpan.FromSeconds(30));
                 using var midiStream = new MemoryStream(midiData);
-                consoleDisplay.WriteMessage("NET", $"Downloaded {midiData.Length} bytes", ConsoleColor.Green);
+                displayService.WriteMessage("NET", $"Downloaded {midiData.Length} bytes", ConsoleColor.Green);
                 midiFile = new MidiFile(midiStream, false);
             }
             else
@@ -37,11 +37,11 @@ public class MidiPlayerService(
                 midiFile = new MidiFile(fileUrl, false);
             }
 
-            consoleDisplay.WriteMessage("SCAN", $"Detected {midiFile.Tracks:X2} tracks, {midiFile.DeltaTicksPerQuarterNote:X4} ticks/quarter", ConsoleColor.Gray);
+            displayService.WriteMessage("SCAN", $"Detected {midiFile.Tracks:X2} tracks, {midiFile.DeltaTicksPerQuarterNote:X4} ticks/quarter", ConsoleColor.Gray);
 
             if (MidiDeviceWrapper.AvailableDeviceCount == 0)
             {
-                consoleDisplay.WriteMessage("ERROR", "No MIDI output devices available", ConsoleColor.Red);
+                displayService.WriteMessage("ERROR", "No MIDI output devices available", ConsoleColor.Red);
                 return;
             }
 
@@ -57,29 +57,29 @@ public class MidiPlayerService(
             }
             allEvents = [.. allEvents.OrderBy(e => e.AbsoluteTime)];
 
-            consoleDisplay.WriteMessage("PROC", $"Processed 0x{allEvents.Count:X} MIDI opcodes", ConsoleColor.Green);
+            displayService.WriteMessage("PROC", $"Processed 0x{allEvents.Count:X} MIDI opcodes", ConsoleColor.Green);
 
             await PlayEventsAsync(allEvents, midiDevice, midiFile.DeltaTicksPerQuarterNote);
         }
         catch (HttpRequestException ex)
         {
-            consoleDisplay.WriteMessage("ERROR", $"Network error: {ex.Message}", ConsoleColor.Red);
+            displayService.WriteMessage("ERROR", $"Network error: {ex.Message}", ConsoleColor.Red);
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
-            consoleDisplay.WriteMessage("ERROR", "Download timeout: The request took too long to complete", ConsoleColor.Red);
+            displayService.WriteMessage("ERROR", "Download timeout: The request took too long to complete", ConsoleColor.Red);
         }
         catch (TimeoutException ex)
         {
-            consoleDisplay.WriteMessage("ERROR", $"Download timeout: {ex.Message}", ConsoleColor.Red);
+            displayService.WriteMessage("ERROR", $"Download timeout: {ex.Message}", ConsoleColor.Red);
         }
         catch (FileDownloadException ex)
         {
-            consoleDisplay.WriteMessage("ERROR", ex.Message, ConsoleColor.Red);
+            displayService.WriteMessage("ERROR", ex.Message, ConsoleColor.Red);
         }
         catch (Exception ex)
         {
-            consoleDisplay.WriteMessage("ERROR", $"Execution failed: {ex.Message}", ConsoleColor.Red);
+            displayService.WriteMessage("ERROR", $"Execution failed: {ex.Message}", ConsoleColor.Red);
         }
         finally
         {
@@ -100,9 +100,9 @@ public class MidiPlayerService(
         var activeNotes = new ActiveNoteTracker();
         var tempoMap = tempoManager.BuildTempoMap(allEvents);
 
-        consoleDisplay.WriteMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
+        displayService.WriteMessage("EXEC", "Initiating MIDI stream injection...", ConsoleColor.Yellow);
         Thread.Sleep(500);
-        consoleDisplay.WriteMessage("LIVE", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
+        displayService.WriteMessage("LIVE", "REAL-TIME MIDI ANALYSIS", ConsoleColor.Green);
 
         var playbackStart = stopwatch.Elapsed;
 
@@ -120,8 +120,8 @@ public class MidiPlayerService(
             ProcessMidiEvent(midiEntry, midiDevice, stopwatch, activeNotes);
         }
 
-        consoleDisplay.WriteMessage("COMP", "MIDI injection terminated successfully", ConsoleColor.Green);
-        consoleDisplay.WriteMessage("STATS", $"Final buffer state: 0x{activeNotes.ActiveCount:X2} active notes", ConsoleColor.Gray);
+        displayService.WriteMessage("COMP", "MIDI injection terminated successfully", ConsoleColor.Green);
+        displayService.WriteMessage("STATS", $"Final buffer state: 0x{activeNotes.ActiveCount:X2} active notes", ConsoleColor.Gray);
     }
 
     private void ProcessMidiEvent(MidiEventInfo midiEntry, IMidiDeviceWrapper midiDevice, Stopwatch stopwatch, ActiveNoteTracker activeNotes)
@@ -162,11 +162,11 @@ public class MidiPlayerService(
 
             case MidiCommandCode.PatchChange:
                 var programEvent = (PatchChangeEvent)midiEntry.Event;
-                consoleDisplay.WriteMessage("PROG", $"Program Change: {programEvent.Patch}", ConsoleColor.Magenta);
+                displayService.WriteMessage("PROG", $"Program Change: {programEvent.Patch}", ConsoleColor.Magenta);
                 midiDevice.Send(MidiMessage.ChangePatch(programEvent.Patch, programEvent.Channel).RawData);
                 break;
         }
 
-        consoleDisplay.UpdateActivityIndicator();
+        displayService.UpdateActivityIndicator();
     }
 }

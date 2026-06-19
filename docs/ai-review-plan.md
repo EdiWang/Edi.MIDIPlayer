@@ -6,7 +6,7 @@
 
 ## Scope
 
-This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, B, C, D, E, and F were completed. It replaces the original long-form review plan as the active planning document.
+This file is the current improvement baseline after Tasks 1, 2, 3, 4, 9, A, B, C, D, E, F, and G were completed. It replaces the original long-form review plan as the active planning document.
 
 Reviewed scope remains:
 
@@ -43,6 +43,7 @@ The following original tasks are complete and removed from the active task list:
 | Task D: Correct active note tracking semantics | Completed | Active notes are now tracked by channel plus note number with reference counts in both playback and browser state. |
 | Task E: Make web notifications observable | Completed | Web startup background tasks and SignalR sends now log failures through `ILogger`; send observation is covered by tests. |
 | Task F: Resolve frontend and dependency loose ends | Completed | Removed unused `waterfallCanvas`, empty `src/wwwroot/app.js`, and unused .NET SignalR client package; documented browser SignalR JS policy. |
+| Task G: Clean up shared display helpers and interfaces | Completed | Added shared MIDI display formatting and split `IDisplayService` from console-only display helpers. |
 
 Detailed execution records:
 
@@ -55,14 +56,15 @@ Detailed execution records:
 - `docs/task-correct-active-note-tracking.md`
 - `docs/task-make-web-notifications-observable.md`
 - `docs/task-resolve-frontend-dependency-loose-ends.md`
+- `docs/task-clean-up-display-helpers-interfaces.md`
 
 ## Current Overall Conclusion
 
 - Overall risk level: medium-low.
-- The most valuable next step is to clean up shared display helpers and display interfaces.
+- The most valuable next step is to leave tempo conversion optimization deferred until there is evidence from profiling or representative large MIDI files.
 - The highest remaining product/code risks are:
-  - Console and web display formatting/helpers still have duplication.
-  - `IConsoleDisplay` still exposes console-specific members to web display implementations.
+  - No remaining P0/P1/P2 issues are listed in the current baseline.
+  - Remaining P3 items are evidence-dependent or configuration cleanup.
 - Broad architecture rewrites, frontend framework adoption, and cross-platform MIDI output are still not recommended.
 
 ## User Confirmations
@@ -83,35 +85,10 @@ Confirmed by the user on 2026-06-19:
 
 | ID | Priority | Type | Location | Issue | Impact | Evidence | Suggested Direction |
 |---|---|---|---|---|---|---|---|
-| R11 | P3 | Maintainability | `NoteProcessorService.cs`, `WebNoteProcessorService.cs` | Note-name and controller-name logic is duplicated. | Display formatting changes can drift between console and web paths. | Both classes define note-name and controller-name helpers. | Move shared MIDI display formatting into a small internal helper. |
-| R12 | P3 | Architecture | `IConsoleDisplay.cs`, display services | `IConsoleDisplay` is used for both console and web but exposes console-specific members. | Web display implements methods that do not naturally belong to it. | `WebDisplayService` returns a lock and uses a stub-like `CreateVelocityBar`. | Split status output from console rendering helpers after tests are in place. |
 | R15 | P3 | Performance | `TempoManagerService.cs`, `MidiPlayerService.cs` | Tick-to-time conversion scans the tempo map from the beginning for each event. | Large MIDI files with many tempo changes could spend unnecessary CPU. | `TicksToTimeSpan` loops from index 0 per event. | Defer until profiling or real-world files show a problem. |
 | R16 | P3 | Readability/Configuration | Multiple files | Some operational values remain hard-coded. | Behavior changes still require code edits. | Startup delays, MIDI device ID, download timeout, browser log limit, and similar values are scattered. | Centralize only user-visible or likely-to-change values; avoid over-configuring internals. |
 
 ## Remaining Improvement Plan
-
-### Task G: Clean Up Shared Display Helpers And Interfaces
-
-- Previous task: Task 11.
-- Priority: P3.
-- Related issues: R11, R12.
-- Goal: Reduce formatting duplication and clarify display interfaces.
-- Change scope:
-  - Shared note/controller formatting helper.
-  - Possible split of `IConsoleDisplay` into status display and console rendering helpers.
-- Not included:
-  - Display redesign.
-  - Broad framework changes.
-- Expected result:
-  - Console and web display paths share note/controller naming.
-  - Web display no longer needs console-specific members.
-- Verification:
-  - Unit tests for formatting helpers.
-  - Web and console smoke tests.
-- Release risk: low to medium.
-- Rollback plan:
-  - Revert helper/interface extraction.
-- Needs user confirmation: no.
 
 ### Task H: Revisit Tempo Conversion Performance Only If Needed
 
@@ -131,12 +108,11 @@ Confirmed by the user on 2026-06-19:
 
 ## Recommended Execution Order
 
-1. Task G: Clean up shared display helpers and interfaces.
-2. Task H: Revisit tempo conversion performance only if evidence appears.
+1. Task H: Revisit tempo conversion performance only if evidence appears.
 
 ## Next Recommended Task
 
-Start with **Task G: Clean Up Shared Display Helpers And Interfaces**.
+Do not start Task H yet unless representative MIDI files or profiling show tempo conversion is a real bottleneck.
 
 Reasoning:
 
@@ -146,7 +122,8 @@ Reasoning:
 - Task D fixed channel-aware active note state in both server and browser paths.
 - Task E added logging for web background tasks and SignalR send failures.
 - Task F removed confirmed unused frontend/dependency loose ends and documented the remaining browser SignalR JavaScript policy.
-- Task G is now the main remaining maintainability cleanup.
+- Task G removed the main display helper duplication and clarified display interfaces.
+- Task H is evidence-dependent and should stay deferred until there is a measurable performance reason.
 
 ## Temporarily Not Recommended
 

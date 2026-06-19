@@ -7,10 +7,9 @@ namespace Edi.MIDIPlayer.Services;
 
 public class WebDisplayService(
     IHubContext<MidiPlayerHub> hubContext,
-    ILogger<WebDisplayService> logger) : IConsoleDisplay
+    ILogger<WebDisplayService> logger) : IDisplayService
 {
     private int _activityIndex = 0;
-    private readonly Lock _consoleLock = new();
 
     public void DisplayHackerBanner()
     {
@@ -32,12 +31,5 @@ public class WebDisplayService(
     public void UpdateActivityIndicator()
     {
         _activityIndex = (_activityIndex + 1) % 5;
-    }
-
-    public Lock GetConsoleLock() => _consoleLock;
-
-    public string CreateVelocityBar(int velocity)
-    {
-        return velocity.ToString();
     }
 }

@@ -56,6 +56,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
         |-- ActiveNoteTrackerTests.cs
         |-- AppOptionsTests.cs
         |-- FileDownloaderServiceTests.cs
+        |-- MidiDisplayFormatterTests.cs
         `-- TempoManagerServiceTests.cs
 ```
 
@@ -98,6 +99,8 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 - `Interfaces/`
   - Small abstractions for playback, input, downloading, tempo conversion, note processing, display, and MIDI device output.
   - These abstractions make the display implementations swappable while sharing playback logic.
+  - `IDisplayService` is the shared display status abstraction.
+  - `IConsoleDisplay` extends `IDisplayService` only for terminal-specific rendering helpers such as the console lock and velocity bar.
 
 - `Models/`
   - `ActiveNoteTracker` tracks active note state by channel plus note number and uses reference counts for overlapping same-channel notes.
@@ -109,6 +112,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
   - `TempoManagerService` builds tempo maps and converts ticks to time.
   - `FileDownloaderService` downloads remote MIDI files.
   - `InputHandlerService` reads command-line or interactive input.
+  - `MidiDisplayFormatter` centralizes MIDI note, controller, and note-color formatting shared by console and web note processors.
   - `MidiDeviceWrapper` adapts NAudio `MidiOut`.
   - `ConsoleDisplayService` and `NoteProcessorService` render terminal output.
   - `WebDisplayService` and `WebNoteProcessorService` publish SignalR events and log send failures through `SignalRSendObserver`.
@@ -186,7 +190,7 @@ dotnet tool install -g Edi.MIDIPlayer --add-source .\nupkg
 ## Testing and Validation Notes
 
 - The repository has a dedicated xUnit v3 + Moq test project at `src/Edi.MIDIPlayer.Tests`.
-- Existing tests cover `AppOptions` parsing, console pause option parsing, active note tracking, SignalR send observation, remote download size/timeout behavior, and tempo conversion.
+- Existing tests cover `AppOptions` parsing, console pause option parsing, active note tracking, MIDI display formatting, SignalR send observation, remote download size/timeout behavior, and tempo conversion.
 - `dotnet test --configuration Release` should remain green because the CI workflow depends on it.
 - For playback changes, validate at least:
   - local `.mid` playback,
