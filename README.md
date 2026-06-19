@@ -49,6 +49,12 @@ Play a local MIDI file with the default web visualizer:
 midi-player "path\to\your\file.mid"
 ```
 
+Use a custom web visualizer URL:
+
+```powershell
+midi-player --urls "http://localhost:5050" "path\to\your\file.mid"
+```
+
 Play a remote MIDI file:
 
 ```powershell

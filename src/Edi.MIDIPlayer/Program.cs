@@ -9,6 +9,8 @@ namespace Edi.MIDIPlayer;
 
 internal class Program
 {
+    private const string DefaultWebUrl = "http://localhost:5000";
+
     static async Task Main(string[] args)
     {
         try
@@ -71,9 +73,11 @@ internal class Program
         app.UseStaticFiles();
         app.MapHub<MidiPlayerHub>("/midihub");
 
-        var url = "http://localhost:5000";
-        Console.WriteLine($"Starting MIDI Player Web Visualizer at {url}");
-        Console.WriteLine("Opening browser...");
+        var bindingUrls = options.WebUrls ?? DefaultWebUrl;
+        var launchUrl = GetBrowserLaunchUrl(bindingUrls);
+
+        Console.WriteLine($"Starting MIDI Player Web Visualizer at {bindingUrls}");
+        Console.WriteLine($"Opening browser at {launchUrl}...");
 
         _ = Task.Run(async () =>
         {
@@ -82,7 +86,7 @@ internal class Program
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = url,
+                    FileName = launchUrl,
                     UseShellExecute = true
                 });
             }
@@ -97,7 +101,43 @@ internal class Program
             await PlayRequestedMidiFileAsync(app.Services, options.MidiArgs, validateLocalPath: true);
         });
 
-        await app.RunAsync(url);
+        if (options.WebUrls is null)
+        {
+            await app.RunAsync(DefaultWebUrl);
+        }
+        else
+        {
+            await app.RunAsync();
+        }
+    }
+
+    private static string GetBrowserLaunchUrl(string urls)
+    {
+        var firstUrl = urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(firstUrl))
+        {
+            return DefaultWebUrl;
+        }
+
+        if (!Uri.TryCreate(firstUrl, UriKind.Absolute, out var uri))
+        {
+            return firstUrl;
+        }
+
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return firstUrl;
+        }
+
+        var uriBuilder = new UriBuilder(uri);
+        if (uri.Host is "*" or "+" or "0.0.0.0" or "::")
+        {
+            uriBuilder.Host = "localhost";
+        }
+
+        return uriBuilder.Uri.ToString().TrimEnd('/');
     }
 
     private static async Task RunConsoleAsync(AppOptions options)
@@ -177,7 +217,7 @@ internal class Program
     {
         Console.WriteLine("""
             Usage:
-              midi-player [--display web|console] <midi-file-or-url>
+              midi-player [--display web|console] [--urls http://localhost:5000] <midi-file-or-url>
               midi-player --web <midi-file-or-url>
               midi-player --console <midi-file-or-url>
 
@@ -193,13 +233,14 @@ internal class Program
         Console
     }
 
-    private sealed record AppOptions(DisplayMode DisplayMode, string[] MidiArgs, string[] HostArgs, bool ShowHelp)
+    private sealed record AppOptions(DisplayMode DisplayMode, string[] MidiArgs, string[] HostArgs, string? WebUrls, bool ShowHelp)
     {
         public static AppOptions Parse(string[] args)
         {
             var displayMode = DisplayMode.Web;
             var midiArgs = new List<string>();
             var hostArgs = new List<string>();
+            string? webUrls = null;
             var showHelp = false;
 
             for (var i = 0; i < args.Length; i++)
@@ -243,11 +284,30 @@ internal class Program
 
                 if (IsKnownHostOptionWithValue(arg))
                 {
+                    var option = arg.Split('=', 2)[0];
+                    string? optionValue = null;
+
                     hostArgs.Add(arg);
-                    if (!arg.Contains('=') && i + 1 < args.Length)
+                    if (arg.Contains('='))
                     {
-                        hostArgs.Add(args[++i]);
+                        optionValue = arg.Split('=', 2)[1];
                     }
+                    else if (i + 1 < args.Length)
+                    {
+                        optionValue = args[++i];
+                        hostArgs.Add(optionValue);
+                    }
+
+                    if (option.Equals("--urls", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (string.IsNullOrWhiteSpace(optionValue))
+                        {
+                            throw new ArgumentException("--urls requires a value.");
+                        }
+
+                        webUrls = optionValue;
+                    }
+
                     continue;
                 }
 
@@ -259,7 +319,7 @@ internal class Program
                 }
             }
 
-            return new AppOptions(displayMode, [.. midiArgs], [.. hostArgs], showHelp);
+            return new AppOptions(displayMode, [.. midiArgs], [.. hostArgs], webUrls, showHelp);
         }
 
         private static bool IsHelpOption(string arg) =>

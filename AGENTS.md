@@ -71,7 +71,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 ### Runtime Flow
 
 1. `AppOptions.Parse` separates display options, host options, and MIDI file arguments.
-2. Web mode starts ASP.NET Core on `http://localhost:5000`, serves `wwwroot`, maps `MidiPlayerHub` to `/midihub`, opens the browser, and starts playback after a short delay.
+2. Web mode starts ASP.NET Core on `http://localhost:5000` by default, or the URL configured with `--urls`, serves `wwwroot`, maps `MidiPlayerHub` to `/midihub`, opens the browser, and starts playback after a short delay.
 3. Console mode builds a generic host and runs playback directly in the terminal.
 4. `InputHandlerService` returns the first MIDI argument or prompts for one interactively.
 5. `MidiPlayerService` loads a local file or downloads a remote MIDI file.
@@ -118,9 +118,10 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
   - `--web`, `--console`
   - display values such as `web`, `browser`, `signalr`, `console`, `terminal`, and `cli`
 - Host options currently recognized by the parser include `--urls`, `--environment`, `--contentRoot`, `--webroot`, and `--applicationName`.
+- `--urls` is an officially supported web-mode option. `Program.RunWebAsync` uses it for ASP.NET Core binding and opens the browser at the first configured URL, converting wildcard hosts such as `*`, `+`, `0.0.0.0`, and `::` to `localhost` for browser launch.
 - Local file validation happens before playback unless the source is HTTP/HTTPS.
 - Remote downloads are limited to HTTP/HTTPS URLs ending in `.mid` or `.midi`, must be smaller than 10 MB, and use `HttpClient` with a configured user agent and timeouts. `MidiPlayerService` currently requests a 30-second download timeout.
-- The default web URL is hard-coded as `http://localhost:5000` in `Program.RunWebAsync`.
+- The default web URL is `http://localhost:5000` when `--urls` is not provided.
 - The first MIDI output device (`deviceId = 0`) is used by `MidiDeviceWrapper` after `MidiPlayerService` checks that at least one output device is available.
 - Avoid adding broad architectural abstractions unless they clearly reduce duplication or match the existing service/interface pattern.
 

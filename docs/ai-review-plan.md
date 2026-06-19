@@ -94,6 +94,16 @@ Confirmed by the user on 2026-06-19:
 - Verification:
   - `dotnet build --configuration Release` from `src/`: passed with 0 warnings and 0 errors.
 
+### 2026-06-19: Task 4 In Progress
+
+- Added a task record at `docs/task-align-web-urls.md`.
+- Updated `AppOptions` to capture the configured `--urls` value.
+- Updated web mode so default startup still uses `http://localhost:5000`, while explicit `--urls` values are used for ASP.NET Core binding through host configuration.
+- Updated browser launch to open the first configured URL and convert wildcard hosts (`*`, `+`, `0.0.0.0`, `::`) to `localhost`.
+- Updated `README.md` and `AGENTS.md` with `--urls` behavior.
+- Verification:
+  - `dotnet build --configuration Release` from `src/`: pending.
+
 ## Issues
 
 | ID | Priority | Type | Location | Description | Impact | Evidence | Suggested Direction |
@@ -101,7 +111,7 @@ Confirmed by the user on 2026-06-19:
 | R1 | P1 | Stability | `src/Edi.MIDIPlayer/Services/MidiDeviceWrapper.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Completed on 2026-06-19: no-device handling now checks available devices before constructing `MidiOut`. | On machines without a MIDI output device, playback should now show the intended "No MIDI output devices available" message instead of failing during wrapper construction. | `MidiPlayerService` checks `MidiDeviceWrapper.AvailableDeviceCount == 0` before `new MidiDeviceWrapper()`; the instance `NumberOfDevices` member was removed. | Keep this path covered by a future test seam or no-device manual validation. |
 | R2 | P1 | Release/Packaging | `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`; `.github/workflows/dotnet.yml`; `README.md` | Completed on 2026-06-19: packaging metadata now explicitly enables packing and removes build-time auto-pack behavior. | CI can rely on the explicit `dotnet pack` step instead of ordinary build auto-pack. | `Edi.MIDIPlayer.csproj` now has `IsPackable=true`, keeps `PackAsTool=true`, removes `GeneratePackageOnBuild`, and has a single `PackageId`; `dotnet pack --configuration Release -o nupkg` passed. | Keep generated `.nupkg` files out of source control. |
 | R3 | P2 | Stability/Security | `src/Edi.MIDIPlayer/Services/FileDownloaderService.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Completed on 2026-06-19: remote downloads now stream responses, reject files at or above 10 MB, and require `.mid` / `.midi` URLs. | Very large or non-MIDI-looking remote URLs should be rejected before consuming excessive memory. | `FileDownloaderService.DownloadAsync` uses `HttpCompletionOption.ResponseHeadersRead` and enforces `MaxDownloadBytes`; `MidiPlayerService` checks remote URL extensions before downloading; build passed. | Add focused tests in Task 10. |
-| R4 | P2 | Configuration/Usability | `src/Edi.MIDIPlayer/Program.cs`; `AGENTS.md` | Recognized host options can be misleading because web mode still runs and opens a hard-coded URL. | Users may pass `--urls` or host options expecting them to affect binding/browser launch, but `RunWebAsync` uses `http://localhost:5000`. | Parser recognizes `--urls`; `RunWebAsync` sets `var url = "http://localhost:5000"` and calls `app.RunAsync(url)`; browser launch uses the same constant. | Either honor configured URLs consistently or remove/limit the documented host option support. |
+| R4 | P2 | Configuration/Usability | `src/Edi.MIDIPlayer/Program.cs`; `AGENTS.md` | In progress on 2026-06-19: `--urls` is captured and used for web binding and browser launch. | Users passing `--urls` should get matching server binding and browser startup behavior. | `AppOptions` captures `WebUrls`; `RunWebAsync` uses host-configured URLs when present and opens the first configured URL in the browser. | Build validation pending; add parser tests in Task 10. |
 | R5 | P2 | Stability/Maintainability | `src/Edi.MIDIPlayer/Program.cs`; `src/Edi.MIDIPlayer/Services/WebDisplayService.cs`; `src/Edi.MIDIPlayer/Services/WebNoteProcessorService.cs` | Web playback and SignalR notifications are fire-and-forget. | Exceptions can be unobserved or silently ignored; high event volume has no backpressure; message ordering is harder to reason about. | `Program.RunWebAsync` starts playback with `_ = Task.Run(...)`; web display and note processors use `_ = hubContext.Clients.All.SendAsync(...)`. | Introduce an explicit background service or async notification path with logged failures. Keep the first pass small. |
 | R6 | P2 | Security | `src/Edi.MIDIPlayer/wwwroot/app.js`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Browser event log uses `innerHTML` for messages that can include user-provided strings. | Local self-XSS is possible if a MIDI URL/path or error message contains HTML. Risk is lower if the browser is only controlled by the local user, but this is still easy to harden. | `addLogEntry` interpolates `timestamp`, `type`, and `message` into `entry.innerHTML`; server messages include strings such as `Downloading MIDI file from: {fileUrl}` and exception messages. | Build log rows with DOM nodes and `textContent` instead of `innerHTML`. |
 | R7 | P2 | Correctness | `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs`; `src/Edi.MIDIPlayer/wwwroot/app.js` | Active note tracking is keyed only by MIDI note number. | The active note count and key highlighting can be wrong for the same note on multiple channels or overlapping note-on events. | `MidiPlayerService` uses `HashSet<int>` and adds/removes `noteEvent.NoteNumber`; browser `app.js` also uses `Set` of note numbers. | Track active notes by channel plus note number, and decide whether overlapping same-channel notes need reference counting. |
@@ -207,6 +217,7 @@ Confirmed by the user on 2026-06-19:
 
 ### Task 4: Align Web URL Binding And Browser Launch
 
+- Status: in progress on 2026-06-19.
 - Priority: P2
 - Related issues: R4, R16
 - Goal: Make web mode behavior match documented host options and user expectations.
