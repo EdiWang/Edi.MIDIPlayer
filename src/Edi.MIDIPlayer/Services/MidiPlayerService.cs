@@ -20,6 +20,12 @@ public class MidiPlayerService(
 
             if (Uri.TryCreate(fileUrl, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
             {
+                if (!IsRemoteMidiUrl(uri))
+                {
+                    consoleDisplay.WriteMessage("ERROR", "Remote MIDI URLs must end with .mid or .midi", ConsoleColor.Red);
+                    return;
+                }
+
                 consoleDisplay.WriteMessage("NET", $"Downloading MIDI file from: {fileUrl}", ConsoleColor.Cyan);
                 var midiData = await fileDownloader.DownloadAsync(fileUrl, TimeSpan.FromSeconds(30));
                 using var midiStream = new MemoryStream(midiData);
@@ -63,6 +69,14 @@ public class MidiPlayerService(
         {
             consoleDisplay.WriteMessage("ERROR", "Download timeout: The request took too long to complete", ConsoleColor.Red);
         }
+        catch (TimeoutException ex)
+        {
+            consoleDisplay.WriteMessage("ERROR", $"Download timeout: {ex.Message}", ConsoleColor.Red);
+        }
+        catch (FileDownloadException ex)
+        {
+            consoleDisplay.WriteMessage("ERROR", ex.Message, ConsoleColor.Red);
+        }
         catch (Exception ex)
         {
             consoleDisplay.WriteMessage("ERROR", $"Execution failed: {ex.Message}", ConsoleColor.Red);
@@ -71,6 +85,13 @@ public class MidiPlayerService(
         {
             midiDevice?.Dispose();
         }
+    }
+
+    private static bool IsRemoteMidiUrl(Uri uri)
+    {
+        var extension = Path.GetExtension(uri.AbsolutePath);
+        return extension.Equals(".mid", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".midi", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task PlayEventsAsync(List<MidiEventInfo> allEvents, IMidiDeviceWrapper midiDevice, int ticksPerQuarterNote)

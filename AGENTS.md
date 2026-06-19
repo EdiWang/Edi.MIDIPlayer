@@ -119,7 +119,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
   - display values such as `web`, `browser`, `signalr`, `console`, `terminal`, and `cli`
 - Host options currently recognized by the parser include `--urls`, `--environment`, `--contentRoot`, `--webroot`, and `--applicationName`.
 - Local file validation happens before playback unless the source is HTTP/HTTPS.
-- Remote downloads use `HttpClient` with a configured user agent and timeouts. `MidiPlayerService` currently requests a 30-second download timeout.
+- Remote downloads are limited to HTTP/HTTPS URLs ending in `.mid` or `.midi`, must be smaller than 10 MB, and use `HttpClient` with a configured user agent and timeouts. `MidiPlayerService` currently requests a 30-second download timeout.
 - The default web URL is hard-coded as `http://localhost:5000` in `Program.RunWebAsync`.
 - The first MIDI output device (`deviceId = 0`) is used by `MidiDeviceWrapper` after `MidiPlayerService` checks that at least one output device is available.
 - Avoid adding broad architectural abstractions unless they clearly reduce duplication or match the existing service/interface pattern.
@@ -169,6 +169,8 @@ dotnet tool install -g Edi.MIDIPlayer --add-source .\nupkg
 - For playback changes, validate at least:
   - local `.mid` playback,
   - remote HTTP/HTTPS MIDI download,
+  - rejection for remote URLs that do not end in `.mid` or `.midi`,
+  - rejection for remote MIDI files at or above 10 MB,
   - default web visualizer startup,
   - console display mode,
   - behavior when no MIDI output device is available, if feasible.

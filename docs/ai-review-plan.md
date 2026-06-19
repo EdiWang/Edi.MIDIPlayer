@@ -84,13 +84,23 @@ Confirmed by the user on 2026-06-19:
   - `dotnet pack --configuration Release -o nupkg` from `src/`: passed.
   - Generated package: `src/nupkg/Edi.MIDIPlayer.2.0.0.nupkg`.
 
+### 2026-06-19: Task 3 Completed
+
+- Added a task record at `docs/task-harden-remote-download.md`.
+- Added remote URL validation so HTTP/HTTPS MIDI sources must end in `.mid` or `.midi`.
+- Updated `FileDownloaderService` to stream responses with `ResponseHeadersRead` and reject remote files at or above 10 MB.
+- Added explicit timeout handling for downloader `TimeoutException`.
+- Updated `README.md` and `AGENTS.md` with remote download constraints.
+- Verification:
+  - `dotnet build --configuration Release` from `src/`: passed with 0 warnings and 0 errors.
+
 ## Issues
 
 | ID | Priority | Type | Location | Description | Impact | Evidence | Suggested Direction |
 |---|---|---|---|---|---|---|---|
 | R1 | P1 | Stability | `src/Edi.MIDIPlayer/Services/MidiDeviceWrapper.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Completed on 2026-06-19: no-device handling now checks available devices before constructing `MidiOut`. | On machines without a MIDI output device, playback should now show the intended "No MIDI output devices available" message instead of failing during wrapper construction. | `MidiPlayerService` checks `MidiDeviceWrapper.AvailableDeviceCount == 0` before `new MidiDeviceWrapper()`; the instance `NumberOfDevices` member was removed. | Keep this path covered by a future test seam or no-device manual validation. |
 | R2 | P1 | Release/Packaging | `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`; `.github/workflows/dotnet.yml`; `README.md` | Completed on 2026-06-19: packaging metadata now explicitly enables packing and removes build-time auto-pack behavior. | CI can rely on the explicit `dotnet pack` step instead of ordinary build auto-pack. | `Edi.MIDIPlayer.csproj` now has `IsPackable=true`, keeps `PackAsTool=true`, removes `GeneratePackageOnBuild`, and has a single `PackageId`; `dotnet pack --configuration Release -o nupkg` passed. | Keep generated `.nupkg` files out of source control. |
-| R3 | P2 | Stability/Security | `src/Edi.MIDIPlayer/Services/FileDownloaderService.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Remote downloads have no maximum size and read the whole response into memory. | A very large or streaming response can cause excessive memory use or a poor CLI experience. If remote URLs are considered untrusted input, this also increases abuse risk. | `FileDownloaderService.DownloadAsync` calls `GetAsync` and then `ReadAsByteArrayAsync`; `MidiPlayerService` accepts any HTTP/HTTPS URL. | Add a conservative maximum download size and stream with early cancellation. Consider extension/content-type checks only if they match product expectations. |
+| R3 | P2 | Stability/Security | `src/Edi.MIDIPlayer/Services/FileDownloaderService.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Completed on 2026-06-19: remote downloads now stream responses, reject files at or above 10 MB, and require `.mid` / `.midi` URLs. | Very large or non-MIDI-looking remote URLs should be rejected before consuming excessive memory. | `FileDownloaderService.DownloadAsync` uses `HttpCompletionOption.ResponseHeadersRead` and enforces `MaxDownloadBytes`; `MidiPlayerService` checks remote URL extensions before downloading; build passed. | Add focused tests in Task 10. |
 | R4 | P2 | Configuration/Usability | `src/Edi.MIDIPlayer/Program.cs`; `AGENTS.md` | Recognized host options can be misleading because web mode still runs and opens a hard-coded URL. | Users may pass `--urls` or host options expecting them to affect binding/browser launch, but `RunWebAsync` uses `http://localhost:5000`. | Parser recognizes `--urls`; `RunWebAsync` sets `var url = "http://localhost:5000"` and calls `app.RunAsync(url)`; browser launch uses the same constant. | Either honor configured URLs consistently or remove/limit the documented host option support. |
 | R5 | P2 | Stability/Maintainability | `src/Edi.MIDIPlayer/Program.cs`; `src/Edi.MIDIPlayer/Services/WebDisplayService.cs`; `src/Edi.MIDIPlayer/Services/WebNoteProcessorService.cs` | Web playback and SignalR notifications are fire-and-forget. | Exceptions can be unobserved or silently ignored; high event volume has no backpressure; message ordering is harder to reason about. | `Program.RunWebAsync` starts playback with `_ = Task.Run(...)`; web display and note processors use `_ = hubContext.Clients.All.SendAsync(...)`. | Introduce an explicit background service or async notification path with logged failures. Keep the first pass small. |
 | R6 | P2 | Security | `src/Edi.MIDIPlayer/wwwroot/app.js`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Browser event log uses `innerHTML` for messages that can include user-provided strings. | Local self-XSS is possible if a MIDI URL/path or error message contains HTML. Risk is lower if the browser is only controlled by the local user, but this is still easy to harden. | `addLogEntry` interpolates `timestamp`, `type`, and `message` into `entry.innerHTML`; server messages include strings such as `Downloading MIDI file from: {fileUrl}` and exception messages. | Build log rows with DOM nodes and `textContent` instead of `innerHTML`. |
@@ -165,6 +175,7 @@ Confirmed by the user on 2026-06-19:
 
 ### Task 3: Harden Remote Download Behavior
 
+- Status: completed on 2026-06-19.
 - Priority: P2
 - Related issues: R3, R8
 - Goal: Prevent oversized remote responses from being loaded into memory and make timeout errors clear.
