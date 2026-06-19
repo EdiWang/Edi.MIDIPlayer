@@ -33,12 +33,13 @@ public class MidiPlayerService(
 
             consoleDisplay.WriteMessage("SCAN", $"Detected {midiFile.Tracks:X2} tracks, {midiFile.DeltaTicksPerQuarterNote:X4} ticks/quarter", ConsoleColor.Gray);
 
-            midiDevice = new MidiDeviceWrapper();
-            if (midiDevice.NumberOfDevices == 0)
+            if (MidiDeviceWrapper.AvailableDeviceCount == 0)
             {
                 consoleDisplay.WriteMessage("ERROR", "No MIDI output devices available", ConsoleColor.Red);
                 return;
             }
+
+            midiDevice = new MidiDeviceWrapper();
 
             var allEvents = new List<MidiEventInfo>();
             for (int track = 0; track < midiFile.Tracks; track++)

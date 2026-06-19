@@ -62,11 +62,23 @@ Confirmed by the user on 2026-06-19:
 - `src/wwwroot/app.js` may be deleted if confirmed unused.
 - `Microsoft.AspNetCore.SignalR.Client` may be removed if confirmed unused.
 
+## Execution Updates
+
+### 2026-06-19: Task 1 Completed
+
+- Implemented the MIDI output device availability check before opening `MidiOut`.
+- Added `MidiDeviceWrapper.AvailableDeviceCount` for construction-free device count checks.
+- Removed the instance `IMidiDeviceWrapper.NumberOfDevices` member so future code does not need to construct the wrapper just to check availability.
+- Updated `README.md` and `AGENTS.md` to reflect the no-device behavior and current testing preference.
+- Verification:
+  - `dotnet build --configuration Release` from `src/`: passed with one known packaging warning about `IsPackable=true`, which is tracked by Task 2.
+  - Manual no-device playback validation: not performed in this environment.
+
 ## Issues
 
 | ID | Priority | Type | Location | Description | Impact | Evidence | Suggested Direction |
 |---|---|---|---|---|---|---|---|
-| R1 | P1 | Stability | `src/Edi.MIDIPlayer/Services/MidiDeviceWrapper.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | No-device handling is likely unreachable because the wrapper constructs `MidiOut` before `MidiPlayerService` checks `NumberOfDevices`. | On machines without a MIDI output device, playback may fail with an exception instead of showing the intended "No MIDI output devices available" message. | `MidiDeviceWrapper` initializes `_midiOut = new(deviceId)` in the constructor path, while `MidiPlayerService` creates `new MidiDeviceWrapper()` and only then checks `midiDevice.NumberOfDevices == 0`. | Check `MidiOut.NumberOfDevices` before constructing `MidiOut`, or inject a factory that validates device availability first. |
+| R1 | P1 | Stability | `src/Edi.MIDIPlayer/Services/MidiDeviceWrapper.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Completed on 2026-06-19: no-device handling now checks available devices before constructing `MidiOut`. | On machines without a MIDI output device, playback should now show the intended "No MIDI output devices available" message instead of failing during wrapper construction. | `MidiPlayerService` checks `MidiDeviceWrapper.AvailableDeviceCount == 0` before `new MidiDeviceWrapper()`; the instance `NumberOfDevices` member was removed. | Keep this path covered by a future test seam or no-device manual validation. |
 | R2 | P1 | Release/Packaging | `src/Edi.MIDIPlayer/Edi.MIDIPlayer.csproj`; `.github/workflows/dotnet.yml`; `README.md` | Packaging intent appears inconsistent and is marked to confirm. | Pushes to `master` may fail at package generation/publish time, blocking releases. | CI runs `dotnet pack`; README notes local validation reports packaging disabled unless `IsPackable` is enabled; the project has `PackAsTool` and `GeneratePackageOnBuild` but no explicit `IsPackable=true`; `PackageId` appears twice. | Confirm intended packability, then make the project file and README/AGENTS guidance match. |
 | R3 | P2 | Stability/Security | `src/Edi.MIDIPlayer/Services/FileDownloaderService.cs`; `src/Edi.MIDIPlayer/Services/MidiPlayerService.cs` | Remote downloads have no maximum size and read the whole response into memory. | A very large or streaming response can cause excessive memory use or a poor CLI experience. If remote URLs are considered untrusted input, this also increases abuse risk. | `FileDownloaderService.DownloadAsync` calls `GetAsync` and then `ReadAsByteArrayAsync`; `MidiPlayerService` accepts any HTTP/HTTPS URL. | Add a conservative maximum download size and stream with early cancellation. Consider extension/content-type checks only if they match product expectations. |
 | R4 | P2 | Configuration/Usability | `src/Edi.MIDIPlayer/Program.cs`; `AGENTS.md` | Recognized host options can be misleading because web mode still runs and opens a hard-coded URL. | Users may pass `--urls` or host options expecting them to affect binding/browser launch, but `RunWebAsync` uses `http://localhost:5000`. | Parser recognizes `--urls`; `RunWebAsync` sets `var url = "http://localhost:5000"` and calls `app.RunAsync(url)`; browser launch uses the same constant. | Either honor configured URLs consistently or remove/limit the documented host option support. |
@@ -87,6 +99,7 @@ Confirmed by the user on 2026-06-19:
 
 ### Task 1: Make MIDI Device Availability Handling Reliable
 
+- Status: completed on 2026-06-19.
 - Priority: P1
 - Related issues: R1
 - Goal: Preserve the intended graceful error message when no MIDI output device is available.

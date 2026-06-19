@@ -33,7 +33,7 @@ Key concepts:
 - **Display mode**: `web` is the default; `console` keeps the terminal visualizer available.
 - **Tempo map**: a list of tempo changes used to convert MIDI ticks into wall-clock playback delays.
 - **Active notes**: a runtime set used for display state and diagnostics while playback is running.
-- **MIDI output device**: the first available Windows MIDI output device is used.
+- **MIDI output device**: the first available Windows MIDI output device is used; playback reports a clear error if no MIDI output device is available.
 
 ## Run, Build, and Test
 

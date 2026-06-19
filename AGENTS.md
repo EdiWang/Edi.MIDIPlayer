@@ -17,7 +17,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 - **Build tool**: .NET SDK / MSBuild.
 - **Package management**: NuGet via `Edi.MIDIPlayer.csproj`; no lock file is currently present.
 - **Database/cache/message queue**: none found.
-- **Testing framework**: To be confirmed. No dedicated test project is currently present; CI still runs `dotnet test`.
+- **Testing framework**: Preferred framework is xUnit v3 with Moq. No dedicated test project is currently present; CI still runs `dotnet test`.
 - **Formatting/lint/type checking**: To be confirmed. No `.editorconfig`, explicit analyzer configuration, or formatter configuration was found.
 - **Deployment and packaging**:
   - GitHub Actions workflow `.github/workflows/dotnet.yml` builds, tests, packs, and pushes the NuGet package on pushes to `master`.
@@ -75,7 +75,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 4. `InputHandlerService` returns the first MIDI argument or prompts for one interactively.
 5. `MidiPlayerService` loads a local file or downloads a remote MIDI file.
 6. MIDI events from all tracks are flattened, sorted by absolute tick, and passed through `TempoManagerService`.
-7. Playback waits until each event's expected wall-clock time, sends raw MIDI messages through `MidiDeviceWrapper`, and updates the selected note/display processor.
+7. Playback checks that at least one MIDI output device exists, then opens device `0`, waits until each event's expected wall-clock time, sends raw MIDI messages through `MidiDeviceWrapper`, and updates the selected note/display processor.
 8. Web mode publishes SignalR messages to browser clients; console mode writes directly to the terminal.
 
 ### Core Directories
@@ -120,7 +120,7 @@ This document is for AI coding assistants and engineers who maintain Edi.MIDIPla
 - Local file validation happens before playback unless the source is HTTP/HTTPS.
 - Remote downloads use `HttpClient` with a configured user agent and timeouts. `MidiPlayerService` currently requests a 30-second download timeout.
 - The default web URL is hard-coded as `http://localhost:5000` in `Program.RunWebAsync`.
-- The first MIDI output device (`deviceId = 0`) is used by `MidiDeviceWrapper`.
+- The first MIDI output device (`deviceId = 0`) is used by `MidiDeviceWrapper` after `MidiPlayerService` checks that at least one output device is available.
 - Avoid adding broad architectural abstractions unless they clearly reduce duplication or match the existing service/interface pattern.
 
 ## Common Development Commands
@@ -246,7 +246,7 @@ If requirements are unclear and cannot be safely inferred from the codebase, ask
 
 ## To Be Confirmed
 
-- Preferred testing framework and test project layout.
+- Preferred test project layout.
 - Whether a repository-wide formatter, `.editorconfig`, or analyzer policy should be added.
 - Whether `Edi.MIDIPlayer.csproj` should explicitly set `IsPackable=true` so `dotnet pack` and the CI packaging intent match.
 - Whether the browser SignalR JavaScript version should track the .NET server package version.
